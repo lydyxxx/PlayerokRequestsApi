@@ -43,7 +43,7 @@
 
 ### 5. `get_balance(myProfile) -> str | None`
 Возвращает кортеж из 3 значений с данными баланса вашего профиля:
-{'AllBalance': 120.94, 'available': 48.94, 'pendingIncome': 72}
+{'AllBalance': 0.00, 'available': 0.00, 'pendingIncome': 0.00, 'frozen': 0.00}
 1. **AllBalance** - Общий баланс (Учитывая средства замороженные так-же которые идут и доступные)
 2. **available** - Баланс доступный к выводу
 3. **pendingIncome** - Баланс который уже подтверждён
@@ -52,40 +52,151 @@
 ### 6. `get_full_info(myProfile) -> str | None`
 Возвращает полный кортеж всей информации о профиле.
 
-Пример успешного ответа:
-```json
-{
-  "data": {
-    "createChatMessage": {
-      "id": "1eff866b-5a11-6480-27cf-72b2c009cc5e",
-      "text": "?",
-      "createdAt": "2025-03-03T19:35:48.936Z",
-      "user": {
-        "id": "1ee2e4f3-6775-6b70-e5c9-bf2595cd157f",
-        "username": "username"
-      },
-      ...
-    }
-  }
-}
-```
-
-
-### ПРИМЕР
+### ПРИМЕРЫ ЗАПРОСОВ И ИХ ОТВЕТЫ
+### Запрос get_id
 ```python
-from PlayerokApi import PlayerokRequestsApi
+from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="cookies.json")
 myProfile = 'username'
-# Получить свой ID пользователя
-user_id = api.get_id("username")
-print(user_id)
 
-# Получить данные своего профиля
-profile_data = api.get_profile("username")
-print(profile_data)
+idProfile = api.get_id(myProfile)
+print(idProfile)
+```
 
-# Найти идентификатор чата и отправить сообщение
-chat_id = api.on_username_id_get(myProfile, "otherUser")
-message_response = api.on_send_message(myProfile, "otherUser", "Hello!")
+### Ответ
+
+```string
+id-profile
+```
+
+### Запрос get_profile
+```python
+from playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+myProfile = 'username'
+
+profile = api.get_profile(myProfile)
+print(profile)
+```
+
+### Ответ
+
+```json
+(
+'username',
+testimonial_count,
+total_items,
+purchases_total,
+sales_total,
+active_items,
+finished_items
+)
+```
+
+
+### Запрос on_username_id_get
+```python
+from playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+myProfile = 'username'
+profileInterlocutor = 'username2'
+
+chatId = api.on_username_id_get(myProfile, profileInterlocutor)
+print(chatId)
+```
+
+### Ответ
+
+```json
+chat-id
+```
+
+
+### Запрос on_send_message
+```python
+from playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+myProfile = 'username'
+profileInterlocutor = 'username2'
+textMessage = 'Hello!'
+
+ProcessSendMessage = api.on_send_message(myProfile, profileInterlocutor, textMessage)
+```
+
+### Запрос get_balance
+```python
+from playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+myProfile = 'username'
+
+balance = api.get_balance(myProfile)
+print(balance)
+```
+
+### Ответ
+
+```json
+{
+'AllBalance': float,
+'available': float,
+'pendingIncome': float,
+'frozen': float
+}
+```
+
+### Запрос get_full_info
+```python
+from playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+myProfile = 'username'
+
+info = api.get_full_info(myProfile)
+print(info)
+```
+
+### Ответ
+
+```json
+{
+'id': 'id',
+'isBlocked': False,
+'isVerified': None,
+'isBlockedFor': None,
+'hasFrozenBalance': False,
+'username': 'username',
+'email': 'username@mail.ru',
+'role': 'USER',
+'balance':
+   {
+      'id': 'id',
+      'value': 0.00,
+      'frozen': 0.00,
+      'available': 0.00,
+      'withdrawable': 0.00,
+      'pendingIncome': 0.00,
+      '__typename': 'UserBalance'
+},
+'profile':
+   {
+      'id': 'id',
+      'username': 'username',
+      'role': 'USER',
+      'avatarURL': 'https://playerok.fra1.digitaloceanspaces.com/images/username.png',
+      'isOnline': False, 'isBlocked': False,
+      'rating': 0,
+      'testimonialCounter': 0,
+      'createdAt': '2023-06-03T12:32:50.461Z',
+      'supportChatId': 'supportChatId',
+      'systemChatId': 'systemChatId',
+      '__typename': 'UserFragment'},
+      'stats': {'id': 'id',
+      'items': {'total': 0, 'finished': 0, '__typename': 'UserItemsStats'},
+      'deals': {'incoming': {'total': 0, 'finished': 0, '__typename': 'IncomingUserDealsStats'},
+      'outgoing': {'total': 0, 'finished': 0, '__typename': 'OutgoingUserDealsStats'}, '__typename': 'UserDealsStats'}, '__typename': 'UserStats'}, 'hasEnabledNotifications': True, 'supportChatId': 'supportChatId', 'systemChatId': 'SystemChatId', '__typename': 'User'}
 ```
