@@ -67,7 +67,8 @@ class PlayerokRequestsApi:
                 balance = {
                     'AllBalance': user_data["balance"]["value"],
                     'available': user_data["balance"]["available"],
-                    'pendingIncome': user_data["balance"]["pendingIncome"]
+                    'pendingIncome': user_data["balance"]["pendingIncome"],
+                    'frozen': user_data["balance"]["frozen"]
                 }
                 return balance
             else:
