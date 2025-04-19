@@ -36,6 +36,83 @@ class PlayerokRequestsApi:
             print(f"Ошибка при загрузке куков: {e}")
         return cookies_dict
 
+
+    def get_balance(self, username):
+        url = "https://playerok.com/graphql"
+        params = {
+            "operationName": "user",
+            "variables": f'{{"username":"{username}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                print("Запрос успешен!")
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                user_data = data["data"]["user"]
+                balance = {
+                    'AllBalance': user_data["balance"]["value"],
+                    'available': user_data["balance"]["available"],
+                    'pendingIncome': user_data["balance"]["pendingIncome"]
+                }
+                return balance
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+
+
+    def get_full_info(self, username):
+        url = "https://playerok.com/graphql"
+        params = {
+            "operationName": "user",
+            "variables": f'{{"username":"{username}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                print("Запрос успешен!")
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                user_data = data["data"]["user"]
+                return user_data
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+
     def get_id(self, username):
         url = "https://playerok.com/graphql"
         params = {
@@ -200,4 +277,3 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при запросе: {e}")
             return None
-
