@@ -1,5 +1,6 @@
-import json
-import tls_requests
+import json, time, tls_requests
+from datetime import datetime, date
+
 
 globalheaders = {
     'accept': '*/*',
@@ -23,6 +24,11 @@ globalheaders = {
 class PlayerokRequestsApi:
     def __init__(self, cookies_file="cookies.json"):
         self.cookies = self.load_cookies(cookies_file)
+        self.api_url = "https://playerok.com/graphql"
+        self.last_messages = {}
+        self.is_first_run = False
+
+
 
     def load_cookies(self, cookies_file):
         """Загружает куки из JSON-файла и возвращает словарь с куками."""
@@ -35,8 +41,163 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при загрузке куков: {e}")
         return cookies_dict
-
     
+
+    def get_new_messages(self, username, interval=5, max_interval=30):
+            current_interval = interval
+            while True:
+                new_messages = []
+                chats = self.get_messages_info(username, unread=True)  
+                for chat_edge in chats:
+                    chat = chat_edge["node"]
+                    chat_id = chat["id"]
+                    last_message = chat.get("lastMessage")
+                    if not last_message or not last_message.get("createdAt"):
+                        continue
+                    message_time = last_message["createdAt"]
+                    previous_time = self.last_messages.get(chat_id, "1970-01-01T00:00:00.000Z")
+                    if message_time > previous_time:
+                        self.last_messages[chat_id] = message_time
+                        participants = chat.get("participants", [])
+                        if participants is None:
+                            participants = []
+                        participant_username = "Неизвестно"
+                        for participant in participants:
+                            try:
+                                if participant["id"] != self.get_id(username):
+                                    participant_username = participant["username"]
+                                    break
+                            except Exception as e:
+                                print(e)
+                        message_text = last_message.get("text", "Сообщение отсутствует")
+                        dt = datetime.strptime(message_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+                        if dt.date() == date.today():
+                            formatted_date = f"Сегодня, {dt.strftime('%H:%M')}"
+                        else:
+                            formatted_date = dt.strftime("%d.%m.%Y %H:%M")
+                        new_messages.append({
+                            "chat_id": chat_id,
+                            "participant": participant_username,
+                            "message": message_text,
+                            "date": formatted_date
+                        })
+
+                for msg in new_messages:
+                    print(f"Новое сообщение в чате с ID {msg['chat_id']} (собеседник: {msg['participant']}):")
+                    print(f"Сообщение: {msg['message']}")
+                    print(f"Дата: {msg['date']}")
+                    print()
+
+                if new_messages:
+                    current_interval = interval
+                else:
+                    current_interval = min(current_interval + 5, max_interval)
+
+                time.sleep(current_interval)
+                return new_messages  
+
+    def get_messages_info(self, username, unread=False):
+        user_id = self.get_id(username)
+        if not user_id:
+            print(f"Не удалось найти user_id для пользователя {username}")
+            return []
+
+        def fetch_chats(after_cursor=None):
+            variables = {
+                "pagination": {"first": 10},  
+                "filter": {"userId": user_id}
+            }
+            if after_cursor:
+                variables["pagination"]["after"] = after_cursor
+            extensions = {
+                "persistedQuery": {
+                    "version": 1,
+                    "sha256Hash": "4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"
+                }
+            }
+            params = {
+                "operationName": "chats",
+                "variables": json.dumps(variables),
+                "extensions": json.dumps(extensions)
+            }
+            try:
+                response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
+                response.raise_for_status()
+                return response.json()
+            except Exception as e:
+                print(f"Ошибка при выполнении запроса: {e}")
+                return None
+
+        all_chats = []
+        after_cursor = None
+        unread_count = 0
+        while True:
+            data = fetch_chats(after_cursor)
+            if not data or "data" not in data or "chats" not in data["data"]:
+                print("Ошибка: Неверный формат ответа от API")
+                break
+            chats = data["data"]["chats"]["edges"]
+            if not chats:
+                break
+            for chat_edge in chats:
+                chat = chat_edge["node"]
+                chat_id = chat["id"]
+                chat_unread_count = chat.get("unreadMessagesCounter", 0)
+                if unread and chat_unread_count == 0:
+                    continue
+                unread_count += chat_unread_count
+                all_chats.append(chat_edge)
+                last_message = chat.get("lastMessage")
+                if last_message and last_message.get("createdAt"):
+                    self.last_messages[chat_id] = last_message["createdAt"]
+            page_info = data["data"]["chats"]["pageInfo"]
+            if not page_info["hasNextPage"]:
+                break
+            after_cursor = page_info["endCursor"]
+
+        print(f"Количество непрочитанных сообщений: {unread_count}")
+
+        for chat_edge in all_chats:
+            chat = chat_edge["node"]
+            chat_id = chat["id"]
+            last_message = chat.get("lastMessage")
+            deal = last_message.get("deal") if last_message else None
+            participants = chat.get("participants", [])
+            if participants is None:
+                participants = []
+            participant_username = "Неизвестно"
+            for participant in participants:
+                try:
+                    if participant["id"] != user_id:
+                        participant_username = participant["username"]
+                        break
+                except Exception as e:
+                    print(e)
+            print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
+            if deal:
+                item = deal.get("item", {})
+                item_name = item.get("name", "Не указан")
+                price = item.get("price", "Не указана")
+                status = deal.get("status", "Не указан")
+                testimonial = deal.get("testimonial")
+                #print(f'Сделка на товар "{item_name}" (цена: {price}).')
+                #print(f"Статус: {status}.")
+                #print("Отзыва нет." if not testimonial else f"Отзыв: {testimonial['text']} (Рейтинг: {testimonial['rating']}).")
+            else:
+                message_text = last_message.get("text", "Сообщение отсутствует") if last_message else "Сообщение отсутствует"
+                message_date = last_message.get("createdAt", "Дата неизвестна") if last_message else "Дата неизвестна"
+                if message_date != "Дата неизвестна":
+                    dt = datetime.strptime(message_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    if dt.date() == date.today():
+                        message_date = f"Сегодня, {dt.strftime('%H:%M')}"
+                    else:
+                        message_date = dt.strftime("%d.%m.%Y %H:%M")
+                #print(f"Последнее сообщение: {message_text}")
+                #print(f"Дата: {message_date}")
+            #print()
+
+        return all_chats
+
     def get_lots(self, username):
         try:
             user_id = self.get_id(username)
@@ -379,22 +540,28 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                data = response.json()
-                errors = data.get("errors", [])
-                if errors:
-                    errormsg = errors[0].get("message", "Неизвестная ошибка")
-                    print(f"Ошибка GraphQL: {errormsg}")
+                try:
+                    data = response.json()
+                    errors = data.get("errors", [])
+                    if errors:
+                        errormsg = errors[0].get("message", "Неизвестная ошибка")
+                        print(f"Ошибка GraphQL: {errormsg}")
+                        return None
+                    chats_data = data.get("data", {}).get("chats", {})
+                    edges = chats_data.get("edges", [])
+                    for edge in edges:
+                        node = edge.get("node", {})
+                        participants = node.get("participants", [])
+                        for participant in participants:
+                            try:
+                                if participant.get("username") == username:
+                                    return node.get("id")
+                            except Exception as e:
+                                print(f'Ошибка {e}')    
+                    print(f"Пользователь {username} не найден в списке участников.")
                     return None
-                chats_data = data.get("data", {}).get("chats", {})
-                edges = chats_data.get("edges", [])
-                for edge in edges:
-                    node = edge.get("node", {})
-                    participants = node.get("participants", [])
-                    for participant in participants:
-                        if participant.get("username") == username:
-                            return node.get("id")
-                print(f"Пользователь {username} не найден в списке участников.")
-                return None
+                except Exception as e:
+                    print(f'Ошибка при запросе!{e}')
             else:
                 print(f"Ошибка {response.status_code}: {response.text}")
                 return None
