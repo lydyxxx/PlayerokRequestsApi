@@ -185,7 +185,6 @@ class PlayerokRequestsApi:
                 active_items = total_items - finished_items
                 purchases_total = user_data["stats"]["deals"]["incoming"]["total"]
                 sales_total = user_data["stats"]["deals"]["outgoing"]["total"]
-                print(user_id)
                 return (
                     nickname,
                     testimonial_count,
@@ -195,6 +194,88 @@ class PlayerokRequestsApi:
                     active_items,
                     finished_items,
                 )
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+
+    def get_product_data(self, link):
+        url = "https://playerok.com/graphql"
+        slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
+
+        params = {
+            "operationName": "item",
+            "variables": f'{{"slug":"{slug}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                print("Запрос успешен!")
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                product_data = data
+
+                return product_data
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+        
+    def copy_product(self, link):
+        url = "https://playerok.com/graphql"
+        slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
+
+        params = {
+            "operationName": "item",
+            "variables": f'{{"slug":"{slug}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                print("Запрос успешен!")
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                product_data = {
+                    "title": data["data"]["item"]["name"],
+                    "description": data["data"]["item"]["description"],
+                    "rawprice": data["data"]["item"]["rawPrice"],
+                    "price": data["data"]["item"]["price"],
+                    "attachments": data["data"]["item"]["attachments"]
+                }
+
+                return product_data
             else:
                 print(f"Ошибка {response.status_code}: {response.text}")
                 return None
@@ -235,6 +316,8 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при отправке сообщения: {e}")
         return None
+
+    
 
     def on_username_id_get(self, profileusername, username):
         user_id = self.get_id(profileusername)
