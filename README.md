@@ -50,7 +50,12 @@ tls_requests
 
 ### 5. `get_balance(myProfile) -> str | None`
 Возвращает кортеж из 3 значений с данными баланса вашего профиля:
-{'AllBalance': 0.00, 'available': 0.00, 'pendingIncome': 0.00, 'frozen': 0.00}
+{
+'AllBalance': 0.00, 
+'available': 0.00, 
+'pendingIncome': 0.00, 
+'frozen': 0.00
+}
 1. **AllBalance** - Общий баланс (Учитывая средства замороженные так-же которые идут и доступные)
 2. **available** - Баланс доступный к выводу
 3. **pendingIncome** - Баланс который уже подтверждён
@@ -58,6 +63,25 @@ tls_requests
    
 ### 6. `get_full_info(myProfile) -> str | None`
 Возвращает полный кортеж всей информации о профиле.
+
+### 7. `get_product_data(link) -> str | None`
+Возвращает полный кортеж всей информации о товаре.
+
+### 8. `copy_product(link) -> str | None`
+Возвращает:
+{
+'title': title, - Название товара
+'description': description, - Описание товара
+'rawprice': rawprice, - Изначальную цену выставленную при выставлении товара
+'price': price, - Цена со скидкой
+'attachments': - атачменты
+   {
+      'id': id,
+      'url': url, - обложка товара
+      '__typename': __typename
+   }
+}
+
 
 ### Туториал как создать cookies.json:
 1. качаем расширение cookie editor на ваш браузер. ["chrome cookie editor"](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)
