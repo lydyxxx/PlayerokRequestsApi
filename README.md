@@ -63,7 +63,7 @@ tls_requests
 1. качаем расширение cookie editor на ваш браузер. ["chrome cookie editor"](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)
 2. заходим на playerok.com заходим в расширение и нажимаем export как json
 ![image](https://github.com/user-attachments/assets/9ce69782-39c3-4c28-8bfe-f93aaa991a35)
-3. создаем в папке с api новый файл и называем его cookie.json
+3. создаем в папке с api новый файл и называем его cookies.json
 4. в него вставляем данные которые мы получили в пункте под №2
 
 
