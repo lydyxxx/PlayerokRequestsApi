@@ -244,3 +244,50 @@ print(info)
       'deals': {'incoming': {'total': 0, 'finished': 0, '__typename': 'IncomingUserDealsStats'},
       'outgoing': {'total': 0, 'finished': 0, '__typename': 'OutgoingUserDealsStats'}, '__typename': 'UserDealsStats'}, '__typename': 'UserStats'}, 'hasEnabledNotifications': True, 'supportChatId': 'supportChatId', 'systemChatId': 'SystemChatId', '__typename': 'User'}
 ```
+
+### Запрос get_product_data
+```python
+from api.playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="api/cookies.json")
+link = 'https://playerok.com/products/563fd7dbd13d-spider-man-2-99-000-igr-v-stim-podarkichek-opisanie'
+
+Product_Data = api.get_product_data(link)
+print(Product_Data)
+```
+
+### Ответ
+
+```json
+Слишком длиныый.
+```
+
+
+### Запрос copy_product
+```python
+from api.playerok_api import PlayerokRequestsApi
+
+api = PlayerokRequestsApi(cookies_file="api/cookies.json")
+link = 'https://playerok.com/products/563fd7dbd13d-spider-man-2-99-000-igr-v-stim-podarkichek-opisanie'
+
+product = api.copy_product(link)
+print(product)
+```
+
+### Ответ
+
+```json
+{
+  "title": "🎁Spider-Man 2 + 99 000 ИГР В СТИМ🎁+ПОДАРКИ❗ЧЕК ОПИСАНИЕ❗",
+  "description": "📋 После покупки вы получите:\nДоступ к базе с 99.000 играми в том числе: Spider Man 2 MiSide, Hogwarts Legacy, Garry's Mod, Among Us, Planet Coaster, Left 4 Dead, Tomb Raider, Little Nightmares, Injustice: Gods Among Us Ultimate Edition, Forza Horizon 5, Wallpaper Engine, Grand Theft Auto V, The Forest, Assetto Corsa, Red Dead Redemption 2, Friday the 13th: The Game, Inside the Backrooms, ARK: Survival Of The Fittest, Metro 2033, The Elder Scrolls V: Skyrim, Goat Simulator, Portal, The Last Of Us, Phasmophobia ,Baldur's Gate 3, GTA V, GTA IV, Mafia: Definitive Edition, Mafia II (Classic), Mafia II: Definitive Edition, Detroit, Hello Neighbor, Batman Arkham Knight, Borderlands2 , Borderlands 3, Dying Light, Dying Light 2, My Summer Car, Spider Man Remastered, Spider-man Miles Morales, Atomic Heart и многих других\n\n🎉 Аккаунты пополняются почти каждый день, а бывает и чаще!\n\n📋 Так-же при покупке товара вы получаете:\n1. Подарки на сумму 1000р+\n2. Возможность найти на купленных аккаунтах доп.игры\n3. Помощь и поддержку\n4. Оффлайн активацию аккаунтов\n\n❗️ Важно перед покупкой:\nВы покупаете общие оффлайн аккаунты, а это значит что доступ к этим аккаунтам могут иметь другие пользователи, а так-же вы не можете сменить данные от аккаунтов. Так-же игры указанные на обложке могут не соответствовать содержимому аккаунтов, но вы можете попросить продавца и мы постараемся добавить вашу игру\n\n❗️ Товар не подлежит возврату ибо после покупки вы сразу получаете данные от аккаунта и подарок",
+  "rawprice": 499,
+  "price": 90,
+  "attachments": [
+    {
+      "id": "1f00c67f-b5f3-6190-3f89-afe4a8010392",
+      "url": "https://i.playerok.com/P1OzOnCcZ83bv2ohfI2S2VwXTypH00gxo_J3tWMkZk4/wm:0.8:soea:5:2:0.2/rs:fill:0:1000:0/g:no/quality:99/czM6Ly9wbGF5ZXJvay8vaW1hZ2VzLzFmMDBjNjdmLWI1ZjMtNjE5MC0zZjg5LWFmZTRhODAxMDM5Mi5qcGc.jpg",
+      "__typename": "File"
+    }
+  ]
+}
+```
