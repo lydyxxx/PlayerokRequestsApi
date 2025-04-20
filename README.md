@@ -12,7 +12,11 @@
 2. **Получение данных о пользователе** (никнейм, количество отзывов, количество товаров и т.д.).  
 3. **Получение идентификатора пользователя** по его никнейму.  
 4. **Получение идентификатора чата** с конкретным пользователем.  
-5. **Отправка текстового сообщения** в чат с выбранным пользователем.  
+5. **Отправка текстового сообщения** в чат с выбранным пользователем.
+6. **Получение баланса пользователя** только пользователя чей cookie
+7. **Получение полной информации о пользователе** только пользователя чей cookie
+8. **Получение полной информации о товаре** если товар cookie значит в информации так-же будут скрытые данные, если товар не cookie то название,описание и т.п данные.
+9. **Копирование товара** получение названия товара, описания, стоимости, картинки товара.  
 
 ---
 
@@ -247,7 +251,7 @@ print(info)
 
 ### Запрос get_product_data
 ```python
-from api.playerok_api import PlayerokRequestsApi
+from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="api/cookies.json")
 link = 'https://playerok.com/products/563fd7dbd13d-spider-man-2-99-000-igr-v-stim-podarkichek-opisanie'
@@ -265,7 +269,7 @@ print(Product_Data)
 
 ### Запрос copy_product
 ```python
-from api.playerok_api import PlayerokRequestsApi
+from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="api/cookies.json")
 link = 'https://playerok.com/products/563fd7dbd13d-spider-man-2-99-000-igr-v-stim-podarkichek-opisanie'
