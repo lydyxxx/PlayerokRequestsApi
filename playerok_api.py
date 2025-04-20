@@ -36,6 +36,47 @@ class PlayerokRequestsApi:
             print(f"Ошибка при загрузке куков: {e}")
         return cookies_dict
 
+    
+    def get_lots(self, username):
+        try:
+            user_id = self.get_id(username)
+            if not user_id:
+                raise ValueError("Invalid user_id")
+
+            params = {
+                'operationName': 'items',
+                'variables': json.dumps({
+                    'pagination': {'first': 24},
+                    'filter': {
+                        'userId': user_id,
+                        'status': ['APPROVED', 'PENDING_MODERATION', 'PENDING_APPROVAL']
+                    }
+                }),
+                'extensions': '{"persistedQuery":{"version":1,"sha256Hash":"d79d6e2921fea03c5f1515a8925fbb816eacaa7bcafe03eb47a40425ef49601e"}}',
+            }
+
+            response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
+            response.raise_for_status()  
+
+            data = response.json()
+
+            lots = []
+            edges = data.get('data', {}).get('items', {}).get('edges', [])
+            for edge in edges:
+                node = edge.get('node', {})
+                lot = {
+                    'id': node.get('id', ''),
+                    'name': node.get('name', ''),
+                }
+                lots.append(lot)
+
+            return lots
+
+        except Exception as e:
+            print(f"Error fetching or parsing lots: {e}")
+            return []
+
+
 
     def get_balance(self, username):
         url = "https://playerok.com/graphql"
@@ -133,7 +174,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
