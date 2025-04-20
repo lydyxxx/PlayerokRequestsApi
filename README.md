@@ -69,6 +69,7 @@ tls_requests
 
 ### 8. `copy_product(link) -> str | None`
 Возвращает:
+```json
 {
 'title': title, - Название товара
 'description': description, - Описание товара
@@ -81,6 +82,7 @@ tls_requests
       '__typename': __typename
    }
 }
+```
 
 
 ### Туториал как создать cookies.json:
