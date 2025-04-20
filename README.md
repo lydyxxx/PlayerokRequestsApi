@@ -59,7 +59,7 @@ tls_requests
 ### 6. `get_full_info(myProfile) -> str | None`
 Возвращает полный кортеж всей информации о профиле.
 
-### Туториал как создать cookie.json:
+### Туториал как создать cookies.json:
 1. качаем расширение cookie editor на ваш браузер. ["chrome cookie editor"](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)
 2. заходим на playerok.com заходим в расширение и нажимаем export как json
 ![image](https://github.com/user-attachments/assets/9ce69782-39c3-4c28-8bfe-f93aaa991a35)
