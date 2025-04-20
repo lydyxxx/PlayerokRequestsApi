@@ -18,7 +18,7 @@
 
 ## Зависимости
 
-tls_requests
+```pip install tls_requests```
 
 ---
 
