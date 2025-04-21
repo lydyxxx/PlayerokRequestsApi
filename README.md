@@ -22,17 +22,16 @@
 
 ## Зависимости
 
-```pip install tls_requests```
+```pip install wrapper-tls-requests```
 
 ---
 
 
 ## Описание основных методов
 
-### 1. `get_id(username) -> str | None`
-Возвращает `user_id` для пользователя с указанным `username`, если такой пользователь существует. В случае ошибки или если пользователь не найден, возвращает `None` - этот метод исключительно использовать со своим username!.
 
-### 2. `get_profile(username) -> tuple | None`
+
+### 1. `get_profile(username) -> tuple | None`
 Возвращает кортеж из 7 значений с данными профиля, либо `None` в случае ошибки:
 
 1. **nickname (str)** — Никнейм пользователя  
@@ -43,16 +42,16 @@
 6. **active_items (int)** — Количество активных товаров (`total_items - finished_items`)  
 7. **finished_items (int)** — Количество завершённых товаров  
 
-### 3. `on_username_id_get(profileusername, username) -> str | None`
-Ищет чат, в котором участвуют `profileusername` (профиль, от лица которого вы ведёте переписку) и `username` (тот, кому вы пишете). Если такой чат найден, метод возвращает его идентификатор (`chat_id`). Если чат не найден, возвращает `None`.
+### 2. `on_username_id_get(username) -> str | None`
+Ищет чат, в котором участвуют `profileusername` (профиль, от лица которого вы ведёте переписку - больше не требуется!(автоматически указывает)) и `username` (тот, кому вы пишете). Если такой чат найден, метод возвращает его идентификатор (`chat_id`). Если чат не найден, возвращает `None`.
 
-### 4. `on_send_message(profileusername, username, text) -> dict | None`
+### 3. `on_send_message(profileusername, text) -> dict | None`
 Отправляет сообщение `text` в чат между пользователями `profileusername` и `username`.  
 - Перед отправкой автоматически пытается определить `chat_id` с помощью `on_username_id_get()`.  
 - Если сообщение успешно отправлено, метод возвращает `dict` с полным GraphQL-ответом.  
 - Если отправить сообщение не удалось (нет нужного `chat_id`, либо ответ от GraphQL не соответствует ожидаемому), метод вернёт `None`.  
 
-### 5. `get_balance(myProfile) -> str | None`
+### 4. `get_balance() -> str | None`
 Возвращает кортеж из 3 значений с данными баланса вашего профиля:
 {
 'AllBalance': 0.00, 
@@ -65,13 +64,13 @@
 3. **pendingIncome** - Баланс который уже подтверждён
 4. **frozen** - Замороженый баланс (возможный баланс который если получение товара подтвердит покупатель)
    
-### 6. `get_full_info(myProfile) -> str | None`
+### 5. `get_full_info() -> str | None`
 Возвращает полный кортеж всей информации о профиле.
 
-### 7. `get_product_data(link) -> str | None`
+### 6. `get_product_data(link) -> str | None`
 Возвращает полный кортеж всей информации о товаре.
 
-### 8. `copy_product(link) -> str | None`
+### 7. `copy_product(link) -> str | None`
 Возвращает:
 ```json
 {
@@ -101,16 +100,6 @@
 
 
 ### ПРИМЕРЫ ЗАПРОСОВ И ИХ ОТВЕТЫ
-### Запрос get_id
-```python
-from playerok_api import PlayerokRequestsApi
-
-api = PlayerokRequestsApi(cookies_file="cookies.json")
-myProfile = 'username'
-
-idProfile = api.get_id(myProfile)
-print(idProfile)
-```
 
 ### Ответ
 
@@ -123,9 +112,8 @@ id-profile
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="cookies.json")
-myProfile = 'username'
 
-profile = api.get_profile(myProfile)
+profile = api.get_profile()
 print(profile)
 ```
 
@@ -152,7 +140,7 @@ api = PlayerokRequestsApi(cookies_file="cookies.json")
 myProfile = 'username'
 profileInterlocutor = 'username2'
 
-chatId = api.on_username_id_get(myProfile, profileInterlocutor)
+chatId = api.on_username_id_get(profileInterlocutor)
 print(chatId)
 ```
 
@@ -168,11 +156,10 @@ chat-id
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="cookies.json")
-myProfile = 'username'
 profileInterlocutor = 'username2'
 textMessage = 'Hello!'
 
-ProcessSendMessage = api.on_send_message(myProfile, profileInterlocutor, textMessage)
+ProcessSendMessage = api.on_send_message(profileInterlocutor, textMessage)
 ```
 
 ### Запрос get_balance
@@ -180,9 +167,8 @@ ProcessSendMessage = api.on_send_message(myProfile, profileInterlocutor, textMes
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="cookies.json")
-myProfile = 'username'
 
-balance = api.get_balance(myProfile)
+balance = api.get_balance()
 print(balance)
 ```
 
@@ -202,9 +188,8 @@ print(balance)
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="cookies.json")
-myProfile = 'username'
 
-info = api.get_full_info(myProfile)
+info = api.get_full_info()
 print(info)
 ```
 
