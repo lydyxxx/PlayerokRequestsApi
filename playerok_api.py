@@ -49,58 +49,57 @@ class PlayerokRequestsApi:
     
 
     def get_new_messages(self, interval=5, max_interval=30):
-            username = self.username
-            current_interval = interval
-            while True:
-                new_messages = []
-                chats = self.get_messages_info(username, unread=True)  
-                for chat_edge in chats:
-                    chat = chat_edge["node"]
-                    chat_id = chat["id"]
-                    last_message = chat.get("lastMessage")
-                    if not last_message or not last_message.get("createdAt"):
-                        continue
-                    message_time = last_message["createdAt"]
-                    previous_time = self.last_messages.get(chat_id, "1970-01-01T00:00:00.000Z")
-                    if message_time > previous_time:
-                        self.last_messages[chat_id] = message_time
-                        participants = chat.get("participants", [])
-                        if participants is None:
-                            participants = []
-                        participant_username = "Неизвестно"
-                        for participant in participants:
-                            try:
-                                if participant["id"] != self.get_id(username):
-                                    participant_username = participant["username"]
-                                    break
-                            except Exception as e:
-                                print(e)
-                        message_text = last_message.get("text", "Сообщение отсутствует")
-                        dt = datetime.strptime(message_time, "%Y-%m-%dT%H:%M:%S.%fZ")
-                        if dt.date() == date.today():
-                            formatted_date = f"Сегодня, {dt.strftime('%H:%M')}"
-                        else:
-                            formatted_date = dt.strftime("%d.%m.%Y %H:%M")
-                        new_messages.append({
-                            "chat_id": chat_id,
-                            "participant": participant_username,
-                            "message": message_text,
-                            "date": formatted_date
-                        })
+        username = self.username
+        current_interval = interval
+        while True:
+            new_messages = []
+            chats = self.get_messages_info(unread=True)  
+            for chat_edge in chats:
+                chat = chat_edge["node"]
+                chat_id = chat["id"]
+                last_message = chat.get("lastMessage")
+                if not last_message or not last_message.get("createdAt"):
+                    continue
+                message_time = last_message["createdAt"]
+                previous_time = self.last_messages.get(chat_id, "1970-01-01T00:00:00.000Z")
+                if message_time > previous_time:
+                    self.last_messages[chat_id] = message_time
+                    participants = chat.get("participants", [])
+                    if participants is None:
+                        participants = []
+                    participant_username = "Неизвестно"
+                    for participant in participants:
+                        try:
+                            if participant["id"] != self.get_id(username):
+                                participant_username = participant["username"]
+                                break
+                        except Exception as e:
+                            print(e)
+                    message_text = last_message.get("text", "Сообщение отсутствует")
+                    dt = datetime.strptime(message_time, "%Y-%m-%dT%H:%M:%S.%fZ")
+                    if dt.date() == date.today():
+                        formatted_date = f"Сегодня, {dt.strftime('%H:%M')}"
+                    else:
+                        formatted_date = dt.strftime("%d.%m.%Y %H:%M")
+                    new_messages.append({
+                        "chat_id": chat_id,
+                        "participant": participant_username,
+                        "message": message_text,
+                        "date": formatted_date
+                    })
 
-                for msg in new_messages:
-                    print(f"Новое сообщение в чате с ID {msg['chat_id']} (собеседник: {msg['participant']}):")
-                    print(f"Сообщение: {msg['message']}")
-                    print(f"Дата: {msg['date']}")
-                    print()
+            for msg in new_messages:
+                print(f"Новое сообщение в чате с ID {msg['chat_id']} (собеседник: {msg['participant']}):")
+                print(f"Сообщение: {msg['message']}")
+                print(f"Дата: {msg['date']}")
+                print()
 
-                if new_messages:
-                    current_interval = interval
-                else:
-                    current_interval = min(current_interval + 5, max_interval)
+            if new_messages:
+                current_interval = interval
+            else:
+                current_interval = min(current_interval + 5, max_interval)
 
-                time.sleep(current_interval)
-                return new_messages  
+            time.sleep(current_interval)
 
     def get_messages_info(self, unread=False):
         username = self.username
