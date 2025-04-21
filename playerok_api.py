@@ -1,5 +1,7 @@
 import json, time, tls_requests
 from datetime import datetime, date
+from urllib.parse import urlparse, parse_qs
+
 
 
 globalheaders = {
@@ -27,6 +29,9 @@ class PlayerokRequestsApi:
         self.api_url = "https://playerok.com/graphql"
         self.last_messages = {}
         self.is_first_run = False
+        self.username, self.id = self.get_username()
+
+    
 
 
 
@@ -43,7 +48,8 @@ class PlayerokRequestsApi:
         return cookies_dict
     
 
-    def get_new_messages(self, username, interval=5, max_interval=30):
+    def get_new_messages(self, interval=5, max_interval=30):
+            username = self.username
             current_interval = interval
             while True:
                 new_messages = []
@@ -96,8 +102,9 @@ class PlayerokRequestsApi:
                 time.sleep(current_interval)
                 return new_messages  
 
-    def get_messages_info(self, username, unread=False):
-        user_id = self.get_id(username)
+    def get_messages_info(self, unread=False):
+        username = self.username
+        user_id = self.id
         if not user_id:
             print(f"Не удалось найти user_id для пользователя {username}")
             return []
@@ -198,9 +205,53 @@ class PlayerokRequestsApi:
 
         return all_chats
 
-    def get_lots(self, username):
+    
+    def get_username(self):
         try:
-            user_id = self.get_id(username)
+            json_data = {
+        'operationName': 'viewer',
+        'variables': {},
+        'query': 'query viewer {\n  viewer {\n    ...Viewer\n    __typename\n  }\n}\n\nfragment Viewer on User {\n  id\n  username\n  email\n  role\n  hasFrozenBalance\n  supportChatId\n  systemChatId\n  unreadChatsCounter\n  isBlocked\n  isBlockedFor\n  createdAt\n  lastItemCreatedAt\n  hasConfirmedPhoneNumber\n  canPublishItems\n  profile {\n    id\n    avatarURL\n    testimonialCounter\n    __typename\n  }\n  __typename\n}',
+    }
+
+            response = tls_requests.post('https://playerok.com/graphql', cookies=self.cookies, headers=globalheaders, json=json_data)
+
+            data = response.json()  
+            viewer = data.get('data', {}).get('viewer', {})
+            
+            username = viewer.get('username', '')
+            id = viewer.get('id', '')
+            if not username:
+                raise ValueError("Username not found")
+
+            return username, id
+
+
+        except ValueError as e:
+            print(f"Ошибка данных: {e}")
+            return ''
+        except Exception as e:
+            print(f"Неизвестная ошибка: {e}")
+            return ''
+
+
+    def get_item_positioninfind(self, item_slug):
+        params = {
+            'operationName': 'item',
+            'variables': f'{{"slug":"{item_slug}"}}',
+            'extensions': '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}',
+        }
+        response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
+        data = response.json()
+        sequence = data['data']['item']['sequence']
+        print(f"позиция в поиске: {sequence}")
+        return sequence
+
+    def get_lots(self, slug_only=False):
+        username = self.username
+
+        try:
+            user_id = self.id
             if not user_id:
                 raise ValueError("Invalid user_id")
 
@@ -217,7 +268,7 @@ class PlayerokRequestsApi:
             }
 
             response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
-            response.raise_for_status()  
+            response.raise_for_status()
 
             data = response.json()
 
@@ -228,10 +279,17 @@ class PlayerokRequestsApi:
                 lot = {
                     'id': node.get('id', ''),
                     'name': node.get('name', ''),
+                    'slug': node.get('slug', '') 
                 }
                 lots.append(lot)
 
+            if slug_only:
+                return [lot['slug'] for lot in lots]  
             return lots
+
+        except Exception as e:
+            print(f"Ошибка при получении лотов: {e}")
+            return [] if not slug_only else []
 
         except Exception as e:
             print(f"Error fetching or parsing lots: {e}")
@@ -239,7 +297,8 @@ class PlayerokRequestsApi:
 
 
 
-    def get_balance(self, username):
+    def get_balance(self):
+        username = self.username
         url = "https://playerok.com/graphql"
         params = {
             "operationName": "user",
@@ -281,7 +340,8 @@ class PlayerokRequestsApi:
             return None
 
 
-    def get_full_info(self, username):
+    def get_full_info(self):
+        username = self.username
         url = "https://playerok.com/graphql"
         params = {
             "operationName": "user",
@@ -316,42 +376,8 @@ class PlayerokRequestsApi:
             print(f"Ошибка при запросе: {e}")
             return None
 
-    def get_id(self, username):
-        url = "https://playerok.com/graphql"
-        params = {
-            "operationName": "user",
-            "variables": f'{{"username":"{username}"}}',
-            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
-        }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
-        try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
-            if response.status_code == 200:
-                data = json.loads(response.text)
-                errors = data.get("errors", [])
-                if errors:
-                    errormsg = errors[0].get("message", "Неизвестная ошибка")
-                    print(f"Ошибка GraphQL: {errormsg}")
-                    return None
-                user_data = data["data"]["user"]
-                user_id = user_data['id']
-                return user_id
-            else:
-                print(f"Ошибка {response.status_code}: {response.text}")
-                return None
-        except Exception as e:
-            print(f"Ошибка при запросе: {e}")
-            return None
-
-    def get_profile(self, username):
+    def get_profile(self):
+        username = self.username
         url = "https://playerok.com/graphql"
         params = {
             "operationName": "user",
@@ -484,8 +510,8 @@ class PlayerokRequestsApi:
             print(f"Ошибка при запросе: {e}")
             return None
 
-    def on_send_message(self, profileusername, username, text):
-        chat_id = self.on_username_id_get(profileusername, username)
+    def on_send_message(self, text):
+        chat_id = self.on_username_id_get()
         url = "https://playerok.com/graphql"
         json_data = {
             "operationName": "createChatMessage",
@@ -520,8 +546,9 @@ class PlayerokRequestsApi:
 
     
 
-    def on_username_id_get(self, profileusername, username):
-        user_id = self.get_id(profileusername)
+    def on_username_id_get(self):
+        username = self.username
+        user_id = self.id
         url = "https://playerok.com/graphql"
         params = {
             "operationName": "chats",
