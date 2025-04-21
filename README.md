@@ -31,7 +31,7 @@
 
 
 
-### 1. `get_profile(username) -> tuple | None`
+### 1. `get_profile() -> tuple | None`
 Возвращает кортеж из 7 значений с данными профиля, либо `None` в случае ошибки:
 
 1. **nickname (str)** — Никнейм пользователя  
