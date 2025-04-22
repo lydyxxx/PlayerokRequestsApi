@@ -42,16 +42,16 @@
 6. **active_items (int)** — Количество активных товаров (`total_items - finished_items`)  
 7. **finished_items (int)** — Количество завершённых товаров  
 
-### 2. `on_username_id_get(username) -> str | None`
+### 2. `on_username_id_get() -> str | None`
 Ищет чат, в котором участвуют `profileusername` (профиль, от лица которого вы ведёте переписку - больше не требуется!(автоматически указывает)) и `username` (тот, кому вы пишете). Если такой чат найден, метод возвращает его идентификатор (`chat_id`). Если чат не найден, возвращает `None`.
 
-### 3. `on_send_message(profileusername, text) -> dict | None`
+### 3. `on_send_message(profileusername, text) -> str | None`
 Отправляет сообщение `text` в чат между пользователями `profileusername` и `username`.  
 - Перед отправкой автоматически пытается определить `chat_id` с помощью `on_username_id_get()`.  
 - Если сообщение успешно отправлено, метод возвращает `dict` с полным GraphQL-ответом.  
 - Если отправить сообщение не удалось (нет нужного `chat_id`, либо ответ от GraphQL не соответствует ожидаемому), метод вернёт `None`.  
 
-### 4. `get_balance() -> str | None`
+### 4. `get_balance() -> dict | None`
 Возвращает кортеж из 3 значений с данными баланса вашего профиля:
 {
 'AllBalance': 0.00, 
@@ -64,13 +64,13 @@
 3. **pendingIncome** - Баланс который уже подтверждён
 4. **frozen** - Замороженый баланс (возможный баланс который если получение товара подтвердит покупатель)
    
-### 5. `get_full_info() -> str | None`
+### 5. `get_full_info() -> tuple | None`
 Возвращает полный кортеж всей информации о профиле.
 
-### 6. `get_product_data(link) -> str | None`
+### 6. `get_product_data(link) -> tuple | None`
 Возвращает полный кортеж всей информации о товаре.
 
-### 7. `copy_product(link) -> str | None`
+### 7. `copy_product(link) -> dict | None`
 Возвращает:
 ```json
 {
@@ -86,6 +86,32 @@
    }
 }
 ```
+
+### 8. `get_username() -> tuple | None`
+Возвращает:
+```json
+{
+'username': username,
+'id': id
+}
+```
+
+### 9. `get_lots() -> dict | None`
+Возвращает:
+```json
+{
+'id': id,
+'name': name,
+'slug': slug
+}
+```
+
+### 10. `calculate_cost(commision, cost, func) -> int | None`
+
+Возвращает:
+
+int | None
+
 
 
 ### Туториал как создать cookies.json:
@@ -137,7 +163,6 @@ finished_items
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="cookies.json")
-myProfile = 'username'
 profileInterlocutor = 'username2'
 
 chatId = api.on_username_id_get(profileInterlocutor)
@@ -239,7 +264,7 @@ print(info)
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="api/cookies.json")
-link = 'https://playerok.com/products/563fd7dbd13d-spider-man-2-99-000-igr-v-stim-podarkichek-opisanie'
+link = 'https://playerok.com/products/linkProduct'
 
 Product_Data = api.get_product_data(link)
 print(Product_Data)
@@ -257,7 +282,7 @@ print(Product_Data)
 from playerok_api import PlayerokRequestsApi
 
 api = PlayerokRequestsApi(cookies_file="api/cookies.json")
-link = 'https://playerok.com/products/563fd7dbd13d-spider-man-2-99-000-igr-v-stim-podarkichek-opisanie'
+link = 'https://playerok.com/products/linkProduct'
 
 product = api.copy_product(link)
 print(product)
@@ -267,14 +292,14 @@ print(product)
 
 ```json
 {
-  "title": "🎁Spider-Man 2 + 99 000 ИГР В СТИМ🎁+ПОДАРКИ❗ЧЕК ОПИСАНИЕ❗",
-  "description": "📋 После покупки вы получите:\nДоступ к базе с 99.000 играми в том числе: Spider Man 2 MiSide, Hogwarts Legacy, Garry's Mod, Among Us, Planet Coaster, Left 4 Dead, Tomb Raider, Little Nightmares, Injustice: Gods Among Us Ultimate Edition, Forza Horizon 5, Wallpaper Engine, Grand Theft Auto V, The Forest, Assetto Corsa, Red Dead Redemption 2, Friday the 13th: The Game, Inside the Backrooms, ARK: Survival Of The Fittest, Metro 2033, The Elder Scrolls V: Skyrim, Goat Simulator, Portal, The Last Of Us, Phasmophobia ,Baldur's Gate 3, GTA V, GTA IV, Mafia: Definitive Edition, Mafia II (Classic), Mafia II: Definitive Edition, Detroit, Hello Neighbor, Batman Arkham Knight, Borderlands2 , Borderlands 3, Dying Light, Dying Light 2, My Summer Car, Spider Man Remastered, Spider-man Miles Morales, Atomic Heart и многих других\n\n🎉 Аккаунты пополняются почти каждый день, а бывает и чаще!\n\n📋 Так-же при покупке товара вы получаете:\n1. Подарки на сумму 1000р+\n2. Возможность найти на купленных аккаунтах доп.игры\n3. Помощь и поддержку\n4. Оффлайн активацию аккаунтов\n\n❗️ Важно перед покупкой:\nВы покупаете общие оффлайн аккаунты, а это значит что доступ к этим аккаунтам могут иметь другие пользователи, а так-же вы не можете сменить данные от аккаунтов. Так-же игры указанные на обложке могут не соответствовать содержимому аккаунтов, но вы можете попросить продавца и мы постараемся добавить вашу игру\n\n❗️ Товар не подлежит возврату ибо после покупки вы сразу получаете данные от аккаунта и подарок",
-  "rawprice": 499,
-  "price": 90,
+  "title": "title",
+  "description": "description",
+  "rawprice": rawprice,
+  "price": rawprice,
   "attachments": [
     {
-      "id": "1f00c67f-b5f3-6190-3f89-afe4a8010392",
-      "url": "https://i.playerok.com/P1OzOnCcZ83bv2ohfI2S2VwXTypH00gxo_J3tWMkZk4/wm:0.8:soea:5:2:0.2/rs:fill:0:1000:0/g:no/quality:99/czM6Ly9wbGF5ZXJvay8vaW1hZ2VzLzFmMDBjNjdmLWI1ZjMtNjE5MC0zZjg5LWFmZTRhODAxMDM5Mi5qcGc.jpg",
+      "id": "id",
+      "url": "url",
       "__typename": "File"
     }
   ]
@@ -282,10 +307,17 @@ print(product)
 ```
 
 
-### get_new_messages(self, username, interval=5, max_interval=30) -> list
+### get_new_messages(self, username, interval=5, max_interval=30) -> dict | None
 Получает новые сообщения для указанного пользователя и выводит их в консоль, отслеживая изменения с заданным интервалом.
 
-- **username**: Имя пользователя, для которого нужно получить новые сообщения.  
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+messages = api.get_new_messages()
+
+print(messages)
+```
 - **interval**: Начальный интервал (в секундах) между проверками новых сообщений (по умолчанию 5 секунд).  
 - **max_interval**: Максимальный интервал (в секундах), до которого может увеличиваться пауза при отсутствии новых сообщений (по умолчанию 30 секунд).  
 
@@ -299,7 +331,17 @@ print(product)
 
 ---
 
-### get_messages_info(self, username, unread=False) -> list
+### get_messages_info(self, unread=False) -> dict | None
+
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+messages = api.get_messages_info()
+
+print(messages)
+```
+
 Получает информацию о чатах пользователя, включая количество непрочитанных сообщений и данные о последних сообщениях.
 
 - **username**: Имя пользователя, для которого нужно получить информацию о чатах.  
@@ -315,7 +357,17 @@ print(product)
 
 ---
 
-### get_lots(self, username) -> list
+### get_lots(self) -> dict | None
+
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+lots = api.get_lots()
+
+print(lots)
+```
+
 Получает список лотов пользователя с их идентификаторами и названиями.
 
 - **username**: Имя пользователя, для которого нужно получить список лотов.  
@@ -325,3 +377,22 @@ print(product)
 - `name`: Название лота.  
 
 Метод выполняет запрос к API и возвращает только лоты со статусами `APPROVED`, `PENDING_MODERATION` или `PENDING_APPROVAL`. Если запрос не удаётся или возникает ошибка, возвращается пустой список, а ошибка выводится в консоль.
+
+### calculate_cost(self, commision, cost, func) -> int | None
+
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+messages = api.calculate_cost(commision, cost, func)
+
+print(messages)
+```
+
+Принимает:
+
+- **commision**: коммисия категории товара (10-20%)
+- **cost**: цена за которую будет выставлен товар (raw_price)
+- **func**: либо 'upper' (поднятие товара), 'billing' (выставление товара)
+
+Возвращает -> int | None

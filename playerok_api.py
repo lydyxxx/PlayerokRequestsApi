@@ -1,6 +1,7 @@
 import json, time, tls_requests
 from datetime import datetime, date
 from urllib.parse import urlparse, parse_qs
+from dictionary_playerok_information import dictionary_billing, dictionary_upper
 
 
 
@@ -53,7 +54,7 @@ class PlayerokRequestsApi:
             current_interval = interval
             while True:
                 new_messages = []
-                chats = self.get_messages_info(username, unread=True)  
+                chats = self.get_messages_info(unread=True)  
                 for chat_edge in chats:
                     chat = chat_edge["node"]
                     chat_id = chat["id"]
@@ -87,12 +88,6 @@ class PlayerokRequestsApi:
                             "message": message_text,
                             "date": formatted_date
                         })
-
-                for msg in new_messages:
-                    print(f"Новое сообщение в чате с ID {msg['chat_id']} (собеседник: {msg['participant']}):")
-                    print(f"Сообщение: {msg['message']}")
-                    print(f"Дата: {msg['date']}")
-                    print()
 
                 if new_messages:
                     current_interval = interval
@@ -162,7 +157,7 @@ class PlayerokRequestsApi:
                 break
             after_cursor = page_info["endCursor"]
 
-        print(f"Количество непрочитанных сообщений: {unread_count}")
+        #print(f"Количество непрочитанных сообщений: {unread_count}")
 
         for chat_edge in all_chats:
             chat = chat_edge["node"]
@@ -180,7 +175,7 @@ class PlayerokRequestsApi:
                         break
                 except Exception as e:
                     print(e)
-            print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
+            #print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
             if deal:
                 item = deal.get("item", {})
                 item_name = item.get("name", "Не указан")
@@ -244,7 +239,6 @@ class PlayerokRequestsApi:
         response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
         data = response.json()
         sequence = data['data']['item']['sequence']
-        print(f"позиция в поиске: {sequence}")
         return sequence
 
     def get_lots(self, slug_only=False):
@@ -317,7 +311,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -360,7 +353,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -396,7 +388,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -428,6 +419,29 @@ class PlayerokRequestsApi:
             print(f"Ошибка при запросе: {e}")
             return None
 
+    def calculate_cost(self, commision, cost, func):
+        dictionary = {}
+        if func == 'upper':
+            dictionary = dictionary_upper
+        elif func == 'billing':
+            dictionary = dictionary_billing
+        
+        selected_category = dictionary['Commisions'][commision]
+        cost_billing = None
+
+
+        for commision_type in selected_category:
+            if cost <= commision_type:
+                cost_billing = dictionary['Commisions'][commision][commision_type]
+                break
+
+        if cost_billing == None and cost >= 10000:
+            cost_billing = dictionary['Commisions'][commision][10000]
+
+
+        return cost_billing
+
+        
     def get_product_data(self, link):
         url = "https://playerok.com/graphql"
         slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
@@ -449,7 +463,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -487,7 +500,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
