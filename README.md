@@ -42,16 +42,16 @@
 6. **active_items (int)** — Количество активных товаров (`total_items - finished_items`)  
 7. **finished_items (int)** — Количество завершённых товаров  
 
-### 2. `on_username_id_get(username) -> str | None`
+### 2. `on_username_id_get() -> str | None`
 Ищет чат, в котором участвуют `profileusername` (профиль, от лица которого вы ведёте переписку - больше не требуется!(автоматически указывает)) и `username` (тот, кому вы пишете). Если такой чат найден, метод возвращает его идентификатор (`chat_id`). Если чат не найден, возвращает `None`.
 
-### 3. `on_send_message(profileusername, text) -> dict | None`
+### 3. `on_send_message(profileusername, text) -> str | None`
 Отправляет сообщение `text` в чат между пользователями `profileusername` и `username`.  
 - Перед отправкой автоматически пытается определить `chat_id` с помощью `on_username_id_get()`.  
 - Если сообщение успешно отправлено, метод возвращает `dict` с полным GraphQL-ответом.  
 - Если отправить сообщение не удалось (нет нужного `chat_id`, либо ответ от GraphQL не соответствует ожидаемому), метод вернёт `None`.  
 
-### 4. `get_balance() -> str | None`
+### 4. `get_balance() -> dict | None`
 Возвращает кортеж из 3 значений с данными баланса вашего профиля:
 {
 'AllBalance': 0.00, 
@@ -64,13 +64,13 @@
 3. **pendingIncome** - Баланс который уже подтверждён
 4. **frozen** - Замороженый баланс (возможный баланс который если получение товара подтвердит покупатель)
    
-### 5. `get_full_info() -> str | None`
+### 5. `get_full_info() -> tuple | None`
 Возвращает полный кортеж всей информации о профиле.
 
-### 6. `get_product_data(link) -> str | None`
+### 6. `get_product_data(link) -> tuple | None`
 Возвращает полный кортеж всей информации о товаре.
 
-### 7. `copy_product(link) -> str | None`
+### 7. `copy_product(link) -> dict | None`
 Возвращает:
 ```json
 {
@@ -86,6 +86,26 @@
    }
 }
 ```
+
+### 8. `get_username() -> tuple | None`
+Возвращает:
+```json
+{
+'username': username,
+'id': id
+}
+```
+
+### 9. `get_lots() -> dict | None`
+Возвращает:
+```json
+{
+'id': id,
+'name': name,
+'slug': slug
+}
+```
+
 
 
 ### Туториал как создать cookies.json:
@@ -281,7 +301,7 @@ print(product)
 ```
 
 
-### get_new_messages(self, username, interval=5, max_interval=30) -> list
+### get_new_messages(self, username, interval=5, max_interval=30) -> dict | None
 Получает новые сообщения для указанного пользователя и выводит их в консоль, отслеживая изменения с заданным интервалом.
 
 ```python
@@ -305,7 +325,7 @@ print(messages)
 
 ---
 
-### get_messages_info(self, unread=False) -> list
+### get_messages_info(self, unread=False) -> dict | None
 
 ```python
 from playerok_api import PlayerokRequestsApi
@@ -331,7 +351,7 @@ print(messages)
 
 ---
 
-### get_lots(self, username) -> list
+### get_lots(self) -> dict | None
 
 ```python
 from playerok_api import PlayerokRequestsApi
