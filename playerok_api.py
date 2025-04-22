@@ -53,7 +53,7 @@ class PlayerokRequestsApi:
             current_interval = interval
             while True:
                 new_messages = []
-                chats = self.get_messages_info(username, unread=True)  
+                chats = self.get_messages_info(unread=True)  
                 for chat_edge in chats:
                     chat = chat_edge["node"]
                     chat_id = chat["id"]
