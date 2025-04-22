@@ -1,6 +1,7 @@
 import json, time, tls_requests
 from datetime import datetime, date
 from urllib.parse import urlparse, parse_qs
+from dictionary_playerok_information import dictionary_billing, dictionary_upper
 
 
 
@@ -418,6 +419,29 @@ class PlayerokRequestsApi:
             print(f"Ошибка при запросе: {e}")
             return None
 
+    def calculate_cost_billing(self, commision, cost, func):
+        dictionary = {}
+        if func == 'upper':
+            dictionary = dictionary_upper
+        elif func == 'billing':
+            dictionary = dictionary_billing
+        
+        selected_category = dictionary['Commisions'][commision]
+        cost_billing = None
+
+
+        for commision_type in selected_category:
+            if cost <= commision_type:
+                cost_billing = dictionary['Commisions'][commision][commision_type]
+                break
+
+        if cost_billing == None:
+            cost_billing = dictionary['Commisions'][commision][10000]
+
+
+        return cost_billing
+
+        
     def get_product_data(self, link):
         url = "https://playerok.com/graphql"
         slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
