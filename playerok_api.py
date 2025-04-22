@@ -419,7 +419,7 @@ class PlayerokRequestsApi:
             print(f"Ошибка при запросе: {e}")
             return None
 
-    def calculate_cost_billing(self, commision, cost, func):
+    def calculate_cost(self, commision, cost, func):
         dictionary = {}
         if func == 'upper':
             dictionary = dictionary_upper
@@ -435,7 +435,7 @@ class PlayerokRequestsApi:
                 cost_billing = dictionary['Commisions'][commision][commision_type]
                 break
 
-        if cost_billing == None:
+        if cost_billing == None and cost >= 10000:
             cost_billing = dictionary['Commisions'][commision][10000]
 
 
