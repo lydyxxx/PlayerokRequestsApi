@@ -106,6 +106,12 @@
 }
 ```
 
+### 10. `calculate_cost(commision, cost, func) -> int | None`
+
+Возвращает:
+
+int | None
+
 
 
 ### Туториал как создать cookies.json:
@@ -371,3 +377,22 @@ print(lots)
 - `name`: Название лота.  
 
 Метод выполняет запрос к API и возвращает только лоты со статусами `APPROVED`, `PENDING_MODERATION` или `PENDING_APPROVAL`. Если запрос не удаётся или возникает ошибка, возвращается пустой список, а ошибка выводится в консоль.
+
+### calculate_cost(self, commision, cost, func) -> int | None
+
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+messages = api.calculate_cost(commision, cost, func)
+
+print(messages)
+```
+
+Принимает:
+
+- **commision**: коммисия категории товара (10-20%)
+- **cost**: цена за которую будет выставлен товар (raw_price)
+- **func**: либо 'upper' (поднятие товара), 'billing' (выставление товара)
+
+Возвращает -> int | None
