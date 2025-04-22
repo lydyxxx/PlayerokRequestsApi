@@ -88,12 +88,6 @@ class PlayerokRequestsApi:
                             "date": formatted_date
                         })
 
-                for msg in new_messages:
-                    print(f"Новое сообщение в чате с ID {msg['chat_id']} (собеседник: {msg['participant']}):")
-                    print(f"Сообщение: {msg['message']}")
-                    print(f"Дата: {msg['date']}")
-                    print()
-
                 if new_messages:
                     current_interval = interval
                 else:
@@ -162,7 +156,7 @@ class PlayerokRequestsApi:
                 break
             after_cursor = page_info["endCursor"]
 
-        print(f"Количество непрочитанных сообщений: {unread_count}")
+        #print(f"Количество непрочитанных сообщений: {unread_count}")
 
         for chat_edge in all_chats:
             chat = chat_edge["node"]
@@ -180,7 +174,7 @@ class PlayerokRequestsApi:
                         break
                 except Exception as e:
                     print(e)
-            print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
+            #print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
             if deal:
                 item = deal.get("item", {})
                 item_name = item.get("name", "Не указан")
@@ -244,7 +238,6 @@ class PlayerokRequestsApi:
         response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
         data = response.json()
         sequence = data['data']['item']['sequence']
-        print(f"позиция в поиске: {sequence}")
         return sequence
 
     def get_lots(self, slug_only=False):
@@ -317,7 +310,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -360,7 +352,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -396,7 +387,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -449,7 +439,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
@@ -487,7 +476,6 @@ class PlayerokRequestsApi:
         try:
             response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
             if response.status_code == 200:
-                print("Запрос успешен!")
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
                 if errors:
