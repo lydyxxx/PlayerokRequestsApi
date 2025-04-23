@@ -112,6 +112,16 @@
 
 int | None
 
+### 11. `get_status_messages(difference) -> dict | None`
+
+Возвращает:
+
+словарь в котором размещены сделки которые имеют статус PAID or CONFIRMED
+
+```json
+{id}:{'id': id,'status': status,'timestamp': timestamp}
+```
+
 
 
 ### Туториал как создать cookies.json:
@@ -392,6 +402,19 @@ print(messages)
 Принимает:
 
 - **commision**: коммисия категории товара (10-20%)
+
+### get_status_messages(difference=300) -> dict | None
+
+Принимает difference = int (Разница, как давно была оплачена,подтверждена сделка)
+
+Возвращает:
+
+словарь в котором размещены сделки которые имеют статус PAID or CONFIRMED
+
+```json
+{id}:{'id': id,'status': status,'timestamp': timestamp}
+```
+
 - **cost**: цена за которую будет выставлен товар (raw_price)
 - **func**: либо 'upper' (поднятие товара), 'billing' (выставление товара)
 
