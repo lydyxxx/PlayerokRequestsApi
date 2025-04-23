@@ -405,6 +405,16 @@ print(messages)
 
 ### get_status_messages(difference=300) -> dict | None
 
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+status_messages = api.get_status_messages(difference=300)
+
+print(status_messages)
+```
+
+
 Принимает difference = int (Разница, как давно была оплачена,подтверждена сделка)
 
 Возвращает:
