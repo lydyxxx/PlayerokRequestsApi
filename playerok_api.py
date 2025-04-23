@@ -25,8 +25,9 @@ globalheaders = {
 }
 
 class PlayerokRequestsApi:
-    def __init__(self, cookies_file="cookies.json"):
+    def __init__(self, cookies_file="cookies.json", logger=False):
         self.cookies = self.load_cookies(cookies_file)
+        self.Logging = logger
         self.api_url = "https://playerok.com/graphql"
         self.last_messages = {}
         self.is_first_run = False
@@ -37,7 +38,6 @@ class PlayerokRequestsApi:
 
 
     def load_cookies(self, cookies_file):
-        """Загружает куки из JSON-файла и возвращает словарь с куками."""
         cookies_dict = {}
         try:
             with open(cookies_file, "r", encoding="utf-8") as file:
@@ -53,6 +53,8 @@ class PlayerokRequestsApi:
             username = self.username
             current_interval = interval
             while True:
+                if self.Logging == True:
+                    print("Начало цикла")
                 new_messages = []
                 chats = self.get_messages_info(unread=True)  
                 for chat_edge in chats:
@@ -60,6 +62,8 @@ class PlayerokRequestsApi:
                     chat_id = chat["id"]
                     last_message = chat.get("lastMessage")
                     if not last_message or not last_message.get("createdAt"):
+                        if self.Logging == True:
+                            print("Ничего не нашли, продолжаем")
                         continue
                     message_time = last_message["createdAt"]
                     previous_time = self.last_messages.get(chat_id, "1970-01-01T00:00:00.000Z")
@@ -100,6 +104,8 @@ class PlayerokRequestsApi:
     def get_messages_info(self, unread=False):
         username = self.username
         user_id = self.id
+        if self.Logging == True:
+            print("Начинаем проверку")
         if not user_id:
             print(f"Не удалось найти user_id для пользователя {username}")
             return []
@@ -157,7 +163,8 @@ class PlayerokRequestsApi:
                 break
             after_cursor = page_info["endCursor"]
 
-        #print(f"Количество непрочитанных сообщений: {unread_count}")
+        if self.Logging == True:
+            print(f"Количество непрочитанных сообщений: {unread_count}")
 
         for chat_edge in all_chats:
             chat = chat_edge["node"]
@@ -175,16 +182,19 @@ class PlayerokRequestsApi:
                         break
                 except Exception as e:
                     print(e)
-            #print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
+            if self.Logging == True:
+                print(f"Чат с ID {chat_id} (собеседник: {participant_username}):")
             if deal:
                 item = deal.get("item", {})
                 item_name = item.get("name", "Не указан")
                 price = item.get("price", "Не указана")
                 status = deal.get("status", "Не указан")
                 testimonial = deal.get("testimonial")
-                #print(f'Сделка на товар "{item_name}" (цена: {price}).')
-                #print(f"Статус: {status}.")
-                #print("Отзыва нет." if not testimonial else f"Отзыв: {testimonial['text']} (Рейтинг: {testimonial['rating']}).")
+                if self.Logging == True:
+                    print(f'Сделка на товар "{item_name}" (цена: {price}).')
+                    print(f"Статус: {status}.")
+                    print("Отзыва нет." if not testimonial else f"Отзыв: {testimonial['text']} (Рейтинг: {testimonial['rating']}).")                    
+
             else:
                 message_text = last_message.get("text", "Сообщение отсутствует") if last_message else "Сообщение отсутствует"
                 message_date = last_message.get("createdAt", "Дата неизвестна") if last_message else "Дата неизвестна"
@@ -194,9 +204,9 @@ class PlayerokRequestsApi:
                         message_date = f"Сегодня, {dt.strftime('%H:%M')}"
                     else:
                         message_date = dt.strftime("%d.%m.%Y %H:%M")
-                #print(f"Последнее сообщение: {message_text}")
-                #print(f"Дата: {message_date}")
-            #print()
+                if self.Logging == True:
+                    print(f"Последнее сообщение: {message_text}")
+                    print(f"Дата: {message_date}")
 
         return all_chats
 
@@ -292,6 +302,8 @@ class PlayerokRequestsApi:
 
 
     def get_balance(self):
+        if self.Logging == True:
+            print("Начало проверки")
         username = self.username
         url = "https://playerok.com/graphql"
         params = {
@@ -421,6 +433,8 @@ class PlayerokRequestsApi:
 
     def calculate_cost(self, commision, cost, func):
         if commision and cost and func:
+            if self.Logging == True:
+                print("Начало расчётов")
             selected_category = dictionary[func][commision]
             cost_billing = None
 
@@ -477,6 +491,9 @@ class PlayerokRequestsApi:
             return None
         
     def copy_product(self, link):
+
+        if self.Logging == True:
+            print("Начинаем копировать продукт")
         url = "https://playerok.com/graphql"
         slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
 
@@ -520,6 +537,7 @@ class PlayerokRequestsApi:
             return None
 
     def on_send_message(self, text):
+        print("Начинаем отправлять сообщение")
         chat_id = self.on_username_id_get()
         url = "https://playerok.com/graphql"
         json_data = {
