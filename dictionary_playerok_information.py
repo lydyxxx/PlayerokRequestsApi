@@ -1,5 +1,5 @@
-dictionary_billing = {
-    'Commisions': {
+dictionary = {
+    'billing': {
         10: {
             499: 19,
             999: 25,
@@ -16,11 +16,8 @@ dictionary_billing = {
             9999: 99,
             10000: 149
         }
-    }
-}
-
-dictionary_upper = {
-    'Commisions': {
+    },
+    'upper': {
         10: {
             499: 9,
             999: 13,
