@@ -47,8 +47,6 @@ class PlayerokRequestsApi:
         return cookies_dict
     
 
-
-
     def get_new_messages(self, interval=5, max_interval=30):
             username = self.username
             current_interval = interval
@@ -105,7 +103,7 @@ class PlayerokRequestsApi:
         variables = {
             "pagination": {"first": 10},  
             "filter": {"userId": self.id}
-        }   
+        }
         if after_cursor:
             variables["pagination"]["after"] = after_cursor
         extensions = {
@@ -251,45 +249,11 @@ class PlayerokRequestsApi:
         sequence = data['data']['item']['sequence']
         return sequence
 
-    def get_id(self, username):
-        url = "https://playerok.com/graphql"
-        params = {
-            "operationName": "user",
-            "variables": f'{{"username":"{username}"}}',
-            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
-        }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
-        try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
-            if response.status_code == 200:
-                data = json.loads(response.text)
-                errors = data.get("errors", [])
-                if errors:
-                    errormsg = errors[0].get("message", "Неизвестная ошибка")
-                    print(f"Ошибка GraphQL: {errormsg}")
-                    return None
-                user_data = data["data"]["user"]
-                user_id = user_data['id']
-                return user_id
-            else:
-                print(f"Ошибка {response.status_code}: {response.text}")
-                return None
-        except Exception as e:
-            print(f"Ошибка при запросе: {e}")
-            return None
+    def get_lots(self, slug_only=False):
+        username = self.username
 
-    def get_lots(self):
         try:
             user_id = self.id
-
             if not user_id:
                 raise ValueError("Invalid user_id")
 
@@ -306,9 +270,10 @@ class PlayerokRequestsApi:
             }
 
             response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
-            response.raise_for_status()  
+            response.raise_for_status()
 
             data = response.json()
+
             lots = []
             edges = data.get('data', {}).get('items', {}).get('edges', [])
             for edge in edges:
@@ -316,10 +281,17 @@ class PlayerokRequestsApi:
                 lot = {
                     'id': node.get('id', ''),
                     'name': node.get('name', ''),
+                    'slug': node.get('slug', '') 
                 }
                 lots.append(lot)
 
+            if slug_only:
+                return [lot['slug'] for lot in lots]  
             return lots
+
+        except Exception as e:
+            print(f"Ошибка при получении лотов: {e}")
+            return [] if not slug_only else []
 
         except Exception as e:
             print(f"Error fetching or parsing lots: {e}")
@@ -371,41 +343,40 @@ class PlayerokRequestsApi:
             return None
 
 
-    def get_full_info(self, username = None):
-        if username != None:
-            url = "https://playerok.com/graphql"
-            params = {
-                "operationName": "user",
-                "variables": f'{{"username":"{username}"}}',
-                "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
-            }
-            headers = {
-                "accept": "*/*",
-                "accept-language": "en-US,en;q=0.9",
-                "access-control-allow-headers": "sentry-trace, baggage",
-                "apollo-require-preflight": "true",
-                "apollographql-client-name": "web",
-                "referer": "https://playerok.com/profile/",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            }
-            try:
-                response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
-                if response.status_code == 200:
-                    print("Запрос успешен!")
-                    data = json.loads(response.text)
-                    errors = data.get("errors", [])
-                    if errors:
-                        errormsg = errors[0].get("message", "Неизвестная ошибка")
-                        print(f"Ошибка GraphQL: {errormsg}")
-                        return None
-                    user_data = data["data"]["user"]
-                    return user_data
-                else:
-                    print(f"Ошибка {response.status_code}: {response.text}")
+    def get_full_info(self):
+        username = self.username
+        url = "https://playerok.com/graphql"
+        params = {
+            "operationName": "user",
+            "variables": f'{{"username":"{username}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
                     return None
-            except Exception as e:
-                print(f"Ошибка при запросе: {e}")
+                user_data = data["data"]["user"]
+                return user_data
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
                 return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
 
     def get_profile(self):
         username = self.username
@@ -527,22 +498,18 @@ class PlayerokRequestsApi:
         tuple_nodes = {}
         for edge in edges:
             try:
-                message_created = edge['node']['lastMessage']['createdAt']
-                dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
-                id = edge['node']['id']
-                status = edge['node']['lastMessage']['deal']['status']
-                timestamp = dt.timestamp()
-                current_timestamp = time.time()
-                if edge['node']['lastMessage']['text'] == '{{DEAL_HAS_PROBLEM}}' and edge['node']['type'] != 'SUPPORT':
-                    if abs(timestamp - current_timestamp) <= difference:
-                        tuple_nodes[id] = {'id': id, 'status': 'PROBLEM', 'timestamp': timestamp}
-                elif edge['node']['lastMessage']['deal']['status'] in ('CONFIRMED', 'PAID'):
+                if edge['node']['lastMessage']['deal']['status'] in ('CONFIRMED', 'PAID'):
+                    message_created = edge['node']['lastMessage']['createdAt']
+                    dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
+                    id = edge['node']['id']
+                    status = edge['node']['lastMessage']['deal']['status']
+                    timestamp = dt.timestamp()
+                    current_timestamp = time.time()
                     if abs(timestamp - current_timestamp) <= difference:
                         tuple_nodes[id] = {'id': id, 'status': status, 'timestamp': timestamp}
             except Exception as e:
-                if self.Logging == True:
-                    print(e)
-        return tuple_nodes if tuple_nodes else None
+                pass
+        return tuple_nodes or None
                 
 
         
@@ -631,27 +598,28 @@ class PlayerokRequestsApi:
 
     
 
-    def get_chatid_on_username(self, username=None):
-        if username != None:
-            user_id = self.id
-            url = "https://playerok.com/graphql"
-            params = {
-                "operationName": "chats",
-                "variables": f'{{"pagination":{{"first":10}},"filter":{{"userId":"{user_id}"}}}}',
-                "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"}}'
-            }
-            headers = {
-                "accept": "*/*",
-                "accept-language": "en-US,en;q=0.9",
-                "access-control-allow-headers": "sentry-trace, baggage",
-                "apollo-require-preflight": "true",
-                "apollographql-client-name": "web",
-                "referer": "https://playerok.com/chats/",
-                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-            }
-            try:
-                response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
-                if response.status_code == 200:
+    def on_username_id_get(self):
+        username = self.username
+        user_id = self.id
+        url = "https://playerok.com/graphql"
+        params = {
+            "operationName": "chats",
+            "variables": f'{{"pagination":{{"first":10}},"filter":{{"userId":"{user_id}"}}}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/chats/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                try:
                     data = response.json()
                     errors = data.get("errors", [])
                     if errors:
@@ -664,13 +632,18 @@ class PlayerokRequestsApi:
                         node = edge.get("node", {})
                         participants = node.get("participants", [])
                         for participant in participants:
-                            if participant.get("username") == username:
-                                return node.get("id")
+                            try:
+                                if participant.get("username") == username:
+                                    return node.get("id")
+                            except Exception as e:
+                                print(f'Ошибка {e}')    
                     print(f"Пользователь {username} не найден в списке участников.")
                     return None
-                else:
-                    print(f"Ошибка {response.status_code}: {response.text}")
-                    return None
-            except Exception as e:
-                print(f"Ошибка при запросе: {e}")
+                except Exception as e:
+                    print(f'Ошибка при запросе!{e}')
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
                 return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
