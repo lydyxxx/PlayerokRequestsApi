@@ -286,14 +286,10 @@ class PlayerokRequestsApi:
             print(f"Ошибка при запросе: {e}")
             return None
 
-
-    def get_lots(self, username = None):
+    def get_lots(self):
         try:
-            user_id = None
-            if username != None:
-                user_id = self.id
-            else:
-                user_id = self.get_id(username=username)
+            user_id = self.id
+
             if not user_id:
                 raise ValueError("Invalid user_id")
 
@@ -313,7 +309,6 @@ class PlayerokRequestsApi:
             response.raise_for_status()  
 
             data = response.json()
-
             lots = []
             edges = data.get('data', {}).get('items', {}).get('edges', [])
             for edge in edges:
