@@ -498,18 +498,21 @@ class PlayerokRequestsApi:
         tuple_nodes = {}
         for edge in edges:
             try:
-                if edge['node']['lastMessage']['deal']['status'] in ('CONFIRMED', 'PAID'):
-                    message_created = edge['node']['lastMessage']['createdAt']
-                    dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
-                    id = edge['node']['id']
-                    status = edge['node']['lastMessage']['deal']['status']
-                    timestamp = dt.timestamp()
-                    current_timestamp = time.time()
-                    if abs(timestamp - current_timestamp) <= difference:
+                message_created = edge['node']['lastMessage']['createdAt']
+                dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
+                id = edge['node']['id']
+                status = edge['node']['lastMessage']['deal']['status']
+                timestamp = dt.timestamp()
+                current_timestamp = time.time()
+                if abs(timestamp - current_timestamp) <= difference:
+                    if edge['node']['lastMessage']['text'] == '{{DEAL_HAS_PROBLEM}}' and edge['node']['type'] != 'SUPPORT':
+                        tuple_nodes[id] = {'id': id, 'status': 'PROBLEM', 'timestamp': timestamp}
+                    elif edge['node']['lastMessage']['deal']['status'] in ('CONFIRMED', 'PAID'):
                         tuple_nodes[id] = {'id': id, 'status': status, 'timestamp': timestamp}
             except Exception as e:
-                pass
-        return tuple_nodes or None
+                if self.Logging == True:
+                    print(e)
+        return tuple_nodes if tuple_nodes else None
                 
 
         
