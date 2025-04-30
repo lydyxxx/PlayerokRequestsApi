@@ -403,6 +403,10 @@ print(messages)
 
 - **commision**: коммисия категории товара (10-20%)
 
+- **cost**: цена за которую будет выставлен товар (raw_price)
+- **func**: либо 'upper' (поднятие товара), 'billing' (выставление товара)
+
+Возвращает -> int | None
 ### get_status_messages(difference=300) -> dict | None
 
 ```python
@@ -425,7 +429,3 @@ print(status_messages)
 {id}:{'id': id,'status': status,'timestamp': timestamp}
 ```
 
-- **cost**: цена за которую будет выставлен товар (raw_price)
-- **func**: либо 'upper' (поднятие товара), 'billing' (выставление товара)
-
-Возвращает -> int | None
