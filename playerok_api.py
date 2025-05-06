@@ -3,8 +3,6 @@ from datetime import datetime, date
 from urllib.parse import urlparse, parse_qs
 from dictionary_playerok_information import dictionary
 
-
-
 globalheaders = {
     'accept': '*/*',
     'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
@@ -108,6 +106,32 @@ class PlayerokRequestsApi:
                 time.sleep(current_interval)
                 return new_messages  
 
+    def fetch_chats(self, after_cursor=None):
+        variables = {
+            "pagination": {"first": 10},  
+            "filter": {"userId": self.id}
+        }
+        if after_cursor:
+            variables["pagination"]["after"] = after_cursor
+        extensions = {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"
+            }
+        }
+        params = {
+            "operationName": "chats",
+            "variables": json.dumps(variables),
+            "extensions": json.dumps(extensions)
+        }
+        try:
+            response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Ошибка при выполнении запроса: {e}")
+            return None
+
     def get_messages_info(self, unread=False):
         username = self.username
         user_id = self.id
@@ -117,37 +141,11 @@ class PlayerokRequestsApi:
             print(f"Не удалось найти user_id для пользователя {username}")
             return []
 
-        def fetch_chats(after_cursor=None):
-            variables = {
-                "pagination": {"first": 10},  
-                "filter": {"userId": user_id}
-            }
-            if after_cursor:
-                variables["pagination"]["after"] = after_cursor
-            extensions = {
-                "persistedQuery": {
-                    "version": 1,
-                    "sha256Hash": "4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"
-                }
-            }
-            params = {
-                "operationName": "chats",
-                "variables": json.dumps(variables),
-                "extensions": json.dumps(extensions)
-            }
-            try:
-                response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
-                response.raise_for_status()
-                return response.json()
-            except Exception as e:
-                print(f"Ошибка при выполнении запроса: {e}")
-                return None
-
         all_chats = []
         after_cursor = None
         unread_count = 0
         while True:
-            data = fetch_chats(after_cursor)
+            data = self.fetch_chats(after_cursor)
             if not data or "data" not in data or "chats" not in data["data"]:
                 print("Ошибка: Неверный формат ответа от API")
                 break
@@ -466,7 +464,37 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при запросе: {e}")
             return None
+    
+    def get_status_messages(self, difference=300):
+        if self.Logging == True:
+            print("start get_status_messages")
+
+        chats = self.fetch_chats(after_cursor=None)
         
+        edges = chats['data']['chats']['edges']
+        tuple_nodes = {}
+        for edge in edges:
+            try:
+                message_created = edge['node']['lastMessage']['createdAt']
+                dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
+                id = edge['node']['id']
+                status = edge['node']['lastMessage']['deal']['status']
+                timestamp = dt.timestamp()
+                current_timestamp = time.time()
+                if abs(timestamp - current_timestamp) <= difference:
+                    if edge['node']['lastMessage']['text'] == '{{DEAL_HAS_PROBLEM}}' and edge['node']['type'] != 'SUPPORT':
+                        tuple_nodes[id] = {'id': id, 'status': 'PROBLEM', 'timestamp': timestamp}
+                    elif edge['node']['lastMessage']['deal']['status'] in ('CONFIRMED', 'PAID'):
+                        tuple_nodes[id] = {'id': id, 'status': status, 'timestamp': timestamp}
+            except Exception as e:
+                if self.Logging == True:
+                    print(e)
+        return tuple_nodes if tuple_nodes else None
+                
+
+        
+        
+
     def copy_product(self, link):
 
         if self.Logging == True:

@@ -112,6 +112,16 @@
 
 int | None
 
+### 11. `get_status_messages(difference) -> dict | None`
+
+Возвращает:
+
+словарь в котором размещены сделки которые имеют статус PAID or CONFIRMED
+
+```json
+{id}:{'id': id,'status': status,'timestamp': timestamp}
+```
+
 
 
 ### Туториал как создать cookies.json:
@@ -392,7 +402,30 @@ print(messages)
 Принимает:
 
 - **commision**: коммисия категории товара (10-20%)
+
 - **cost**: цена за которую будет выставлен товар (raw_price)
 - **func**: либо 'upper' (поднятие товара), 'billing' (выставление товара)
 
 Возвращает -> int | None
+### get_status_messages(difference=300) -> dict | None
+
+```python
+from playerok_api import PlayerokRequestsApi
+api = PlayerokRequestsApi(cookies_file="cookies.json")
+
+status_messages = api.get_status_messages(difference=300)
+
+print(status_messages)
+```
+
+
+Принимает difference = int (Разница, как давно была оплачена,подтверждена сделка)
+
+Возвращает:
+
+словарь в котором размещены сделки которые имеют статус PAID or CONFIRMED
+
+```json
+{id}:{'id': id,'status': status,'timestamp': timestamp}
+```
+
