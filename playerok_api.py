@@ -7,21 +7,28 @@ from dictionary_playerok_information import dictionary
 
 globalheaders = {
     'accept': '*/*',
-    'accept-language': 'en-US,en;q=0.9',
+    'accept-language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
     'access-control-allow-headers': 'sentry-trace, baggage',
     'apollo-require-preflight': 'true',
     'apollographql-client-name': 'web',
+    'content-type': 'application/json',
     'origin': 'https://playerok.com',
     'priority': 'u=1, i',
-    'referer': 'https://playerok.com/chats/',
-    'sec-ch-ua': '"Not(A:Brand";v="99", "Google Chrome";v="133", "Chromium";v="133"',
+    'referer': 'https://playerok.com/profile/',
+    'sec-ch-ua': '"Google Chrome";v="135", "Not-A.Brand";v="8", "Chromium";v="135"',
+    'sec-ch-ua-arch': '"x86"',
+    'sec-ch-ua-bitness': '"64"',
+    'sec-ch-ua-full-version': '"135.0.7049.115"',
+    'sec-ch-ua-full-version-list': '"Google Chrome";v="135.0.7049.115", "Not-A.Brand";v="8.0.0.0", "Chromium";v="135.0.7049.115"',
     'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-model': '""',
     'sec-ch-ua-platform': '"Windows"',
+    'sec-ch-ua-platform-version': '"19.0.0"',
     'sec-fetch-dest': 'empty',
     'sec-fetch-mode': 'cors',
     'sec-fetch-site': 'same-origin',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36',
-    'x-timezone-offset': '480',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36',
+    'x-timezone-offset': '-180',
 }
 
 class PlayerokRequestsApi:
@@ -214,12 +221,14 @@ class PlayerokRequestsApi:
     def get_username(self):
         try:
             json_data = {
-        'operationName': 'viewer',
-        'variables': {},
-        'query': 'query viewer {\n  viewer {\n    ...Viewer\n    __typename\n  }\n}\n\nfragment Viewer on User {\n  id\n  username\n  email\n  role\n  hasFrozenBalance\n  supportChatId\n  systemChatId\n  unreadChatsCounter\n  isBlocked\n  isBlockedFor\n  createdAt\n  lastItemCreatedAt\n  hasConfirmedPhoneNumber\n  canPublishItems\n  profile {\n    id\n    avatarURL\n    testimonialCounter\n    __typename\n  }\n  __typename\n}',
-    }
+    'operationName': 'viewer',
+    'variables': {},
+    'query': 'query viewer {\n  viewer {\n    ...Viewer\n    __typename\n  }\n}\n\nfragment Viewer on User {\n  id\n  username\n  email\n  role\n  hasFrozenBalance\n  supportChatId\n  systemChatId\n  unreadChatsCounter\n  isBlocked\n  isBlockedFor\n  createdAt\n  lastItemCreatedAt\n  hasConfirmedPhoneNumber\n  canPublishItems\n  profile {\n    id\n    avatarURL\n    testimonialCounter\n    __typename\n  }\n  __typename\n}',
+                }
 
             response = tls_requests.post('https://playerok.com/graphql', cookies=self.cookies, headers=globalheaders, json=json_data)
+
+            #print(response.text)
 
             data = response.json()  
             viewer = data.get('data', {}).get('viewer', {})
@@ -311,17 +320,10 @@ class PlayerokRequestsApi:
             "variables": f'{{"username":"{username}"}}',
             "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
         }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
+
         try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
+            print(response.text)
             if response.status_code == 200:
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
@@ -353,17 +355,9 @@ class PlayerokRequestsApi:
             "variables": f'{{"username":"{username}"}}',
             "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
         }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
+
         try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
             if response.status_code == 200:
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
@@ -388,17 +382,9 @@ class PlayerokRequestsApi:
             "variables": f'{{"username":"{username}"}}',
             "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
         }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
+
         try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
             if response.status_code == 200:
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
@@ -462,17 +448,9 @@ class PlayerokRequestsApi:
             "variables": f'{{"slug":"{slug}"}}',
             "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
         }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
+
         try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
             if response.status_code == 200:
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
@@ -502,17 +480,9 @@ class PlayerokRequestsApi:
             "variables": f'{{"slug":"{slug}"}}',
             "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
         }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/profile/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
+
         try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
             if response.status_code == 200:
                 data = json.loads(response.text)
                 errors = data.get("errors", [])
@@ -582,17 +552,9 @@ class PlayerokRequestsApi:
             "variables": f'{{"pagination":{{"first":10}},"filter":{{"userId":"{user_id}"}}}}',
             "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"}}'
         }
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-US,en;q=0.9",
-            "access-control-allow-headers": "sentry-trace, baggage",
-            "apollo-require-preflight": "true",
-            "apollographql-client-name": "web",
-            "referer": "https://playerok.com/chats/",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
-        }
+
         try:
-            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
             if response.status_code == 200:
                 try:
                     data = response.json()
