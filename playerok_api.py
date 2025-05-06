@@ -261,7 +261,6 @@ class PlayerokRequestsApi:
         return sequence
 
     def get_lots(self, slug_only=False):
-        username = self.username
 
         try:
             user_id = self.id
@@ -303,10 +302,6 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при получении лотов: {e}")
             return [] if not slug_only else []
-
-        except Exception as e:
-            print(f"Error fetching or parsing lots: {e}")
-            return []
 
 
 
