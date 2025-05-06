@@ -225,20 +225,24 @@ class PlayerokRequestsApi:
     'variables': {},
     'query': 'query viewer {\n  viewer {\n    ...Viewer\n    __typename\n  }\n}\n\nfragment Viewer on User {\n  id\n  username\n  email\n  role\n  hasFrozenBalance\n  supportChatId\n  systemChatId\n  unreadChatsCounter\n  isBlocked\n  isBlockedFor\n  createdAt\n  lastItemCreatedAt\n  hasConfirmedPhoneNumber\n  canPublishItems\n  profile {\n    id\n    avatarURL\n    testimonialCounter\n    __typename\n  }\n  __typename\n}',
                 }
+            
 
             response = tls_requests.post('https://playerok.com/graphql', cookies=self.cookies, headers=globalheaders, json=json_data)
+            try:
 
-            #print(response.text)
+                #print(response.text)
 
-            data = response.json()  
-            viewer = data.get('data', {}).get('viewer', {})
-            
-            username = viewer.get('username', '')
-            id = viewer.get('id', '')
-            if not username:
-                raise ValueError("Username not found")
+                data = response.json()  
+                viewer = data.get('data', {}).get('viewer', {})
+                
+                username = viewer.get('username', '')
+                id = viewer.get('id', '')
+                if not username:
+                    raise ValueError("Username not found")
 
-            return username, id
+                return username, id
+            except Exception as e:
+                print(f'Unsolved problem(Please pass this error to the API owner.) - ERROR: {e}')
 
 
         except ValueError as e:
