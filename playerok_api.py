@@ -1,7 +1,7 @@
 import json, time, tls_requests
 from datetime import datetime, date
 from urllib.parse import urlparse, parse_qs
-from dictionary_playerok_information import dictionary
+from api.dictionary_playerok_information import dictionary
 
 globalheaders = {
     'accept': '*/*',
@@ -54,6 +54,123 @@ class PlayerokRequestsApi:
         return cookies_dict
     
 
+
+    # chats functions
+
+    def on_username_id_get(self, profileusername, username):
+        user_id = self.get_id_for_username(profileusername)
+        url = "https://playerok.com/graphql"
+        params = {
+            "operationName": "chats",
+            "variables": f'{{"pagination":{{"first":10}},"filter":{{"userId":"{user_id}"}}}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"}}'
+        }
+
+        try:
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
+            if response.status_code == 200:
+                data = response.json()
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                chats_data = data.get("data", {}).get("chats", {})
+                edges = chats_data.get("edges", [])
+                for edge in edges:
+                    node = edge.get("node", {})
+                    participants = node.get("participants", [])
+                    for participant in participants:
+                        if participant.get("username") == username:
+                            return node.get("id")
+                print(f"Пользователь {username} не найден в списке участников.")
+                return None
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+
+    def on_send_message(self, username, text):
+        chat_id = self.on_username_id_get(self.username, username)
+        url = "https://playerok.com/graphql"
+        json_data = {
+            "operationName": "createChatMessage",
+            "variables": {
+                "input": {
+                    "chatId": chat_id,
+                    "text": text,
+                },
+            },
+            "query": "mutation createChatMessage($input: CreateChatMessageInput!, $file: Upload) { createChatMessage(input: $input, file: $file) { ...RegularChatMessage __typename } } fragment RegularChatMessage on ChatMessage { id text createdAt deletedAt isRead isSuspicious isBulkMessaging game { ...RegularGameProfile __typename } file { ...PartialFile __typename } user { ...ChatMessageUserFields __typename } deal { ...ChatMessageItemDeal __typename } item { ...ItemEdgeNode __typename } transaction { ...RegularTransaction __typename } moderator { ...UserEdgeNode __typename } eventByUser { ...ChatMessageUserFields __typename } eventToUser { ...ChatMessageUserFields __typename } isAutoResponse event buttons { ...ChatMessageButton __typename } __typename } fragment RegularGameProfile on GameProfile { id name type slug logo { ...PartialFile __typename } __typename } fragment PartialFile on File { id url __typename } fragment ChatMessageUserFields on UserFragment { ...UserEdgeNode __typename } fragment UserEdgeNode on UserFragment { ...RegularUserFragment __typename } fragment RegularUserFragment on UserFragment { id username role avatarURL isOnline isBlocked rating testimonialCounter createdAt supportChatId systemChatId __typename } fragment ChatMessageItemDeal on ItemDeal { id direction status statusDescription hasProblem user { ...ChatParticipant __typename } testimonial { ...ChatMessageDealTestimonial __typename } item { id name price slug rawPrice sellerType user { ...ChatParticipant __typename } category { id __typename } attachments { ...PartialFile __typename } comment dataFields { ...GameCategoryDataFieldWithValue __typename } obtainingType { ...GameCategoryObtainingType __typename } __typename } obtainingFields { ...GameCategoryDataFieldWithValue __typename } chat { id type __typename } transaction { id statusExpirationDate __typename } statusExpirationDate commentFromBuyer __typename } fragment ChatParticipant on UserFragment { ...RegularUserFragment __typename } fragment ChatMessageDealTestimonial on Testimonial { id status text rating createdAt updatedAt creator { ...RegularUserFragment __typename } moderator { ...RegularUserFragment __typename } user { ...RegularUserFragment __typename } __typename } fragment GameCategoryDataFieldWithValue on GameCategoryDataFieldWithValue { id label type inputType copyable hidden required value __typename } fragment GameCategoryObtainingType on GameCategoryObtainingType { id name description gameCategoryId noCommentFromBuyer instructionForBuyer instructionForSeller sequence feeMultiplier agreements { ...RegularGameCategoryAgreement __typename } props { minTestimonialsForSeller __typename } __typename } fragment RegularGameCategoryAgreement on GameCategoryAgreement { description gameCategoryId gameCategoryObtainingTypeId iconType id sequence __typename } fragment ItemEdgeNode on ItemProfile { ...MyItemEdgeNode ...ForeignItemEdgeNode __typename } fragment MyItemEdgeNode on MyItemProfile { id slug priority status name price rawPrice statusExpirationDate sellerType attachment { ...PartialFile __typename } user { ...UserItemEdgeNode __typename } approvalDate createdAt priorityPosition viewsCounter feeMultiplier __typename } fragment UserItemEdgeNode on UserFragment { ...UserEdgeNode __typename } fragment ForeignItemEdgeNode on ForeignItemProfile { id slug priority status name price rawPrice sellerType attachment { ...PartialFile __typename } user { ...UserItemEdgeNode __typename } approvalDate priorityPosition createdAt viewsCounter feeMultiplier __typename } fragment RegularTransaction on Transaction { id operation direction providerId provider { ...RegularTransactionProvider __typename } user { ...RegularUserFragment __typename } creator { ...RegularUserFragment __typename } status statusDescription statusExpirationDate value fee createdAt props { ...RegularTransactionProps __typename } verifiedAt verifiedBy { ...UserEdgeNode __typename } completedBy { ...UserEdgeNode __typename } paymentMethodId completedAt isSuspicious __typename } fragment RegularTransactionProvider on TransactionProvider { id name fee account { ...RegularTransactionProviderAccount __typename } props { ...TransactionProviderPropsFragment __typename } limits { ...ProviderLimits __typename } paymentMethods { ...TransactionPaymentMethod __typename } __typename } fragment RegularTransactionProviderAccount on TransactionProviderAccount { id value userId __typename } fragment TransactionProviderPropsFragment on TransactionProviderPropsFragment { requiredUserData { ...TransactionProviderRequiredUserData __typename } tooltip __typename } fragment TransactionProviderRequiredUserData on TransactionProviderRequiredUserData { email phoneNumber __typename } fragment ProviderLimits on ProviderLimits { incoming { ...ProviderLimitRange __typename } outgoing { ...ProviderLimitRange __typename } __typename } fragment ProviderLimitRange on ProviderLimitRange { min max __typename } fragment TransactionPaymentMethod on TransactionPaymentMethod { id name fee providerId account { ...RegularTransactionProviderAccount __typename } props { ...TransactionProviderPropsFragment __typename } limits { ...ProviderLimits __typename } __typename } fragment RegularTransactionProps on TransactionPropsFragment { creatorId dealId paidFromPendingIncome paymentURL successURL paymentAccount { id value __typename } paymentGateway alreadySpent exchangeRate __typename } fragment ChatMessageButton on ChatMessageButton { type url text __typename }"
+        }
+        try:
+            response = tls_requests.post(url, headers=globalheaders, cookies=self.cookies, json=json_data)
+            if response.status_code == 200:
+                data = response.json()
+                errors = data.get("errors")
+                if errors:
+                    print("Ошибка при отправке сообщения:", errors)
+                    return None
+                create_chat_msg = data.get("data", {}).get("createChatMessage")
+                if create_chat_msg:
+                    return data
+                else:
+                    print("Сообщение не было отправлено (ответ не соответствует ожиданиям).")
+                    return None
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+        return None
+
+    def get_status_messages(self, difference=300):
+        if self.Logging == True:
+            print("start get_status_messages")
+
+        chats = self.fetch_chats(after_cursor=None)
+        
+
+
+        edges = chats['data']['chats']['edges']
+        tuple_nodes = {}
+        for edge in edges:
+            try:
+                message_created = edge['node']['lastMessage']['createdAt']
+                dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
+                id = edge['node']['id']
+                params = {
+                    "operationName": "chat",
+                    "variables": f'{{"id":"{id}"}}',
+                    "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"38efcc58bdc432cc05bc743345e9ef9653a3ca1c0f45db822f4166d0f0cc17c4"}}'
+                }
+
+                response = tls_requests.get(self.api_url, params=params, headers=globalheaders, cookies=self.cookies)
+                data = json.loads(response.text)
+
+                params2 = {
+                    "operationName": "deal",
+                    "variables": f'{{"id":"{data['data']['chat']['deals'][0]['id']}"}}',
+                    "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"10fb6169572069b90c0fc4997ecd553d96449c573d574295afb70565a0d18198"}}'
+                }
+
+                response2 = tls_requests.get(self.api_url, params=params2, headers=globalheaders, cookies=self.cookies)
+                data2 = json.loads(response2.text)
+                status = data2['data']['deal']['status']
+                timestamp = dt.timestamp()
+                current_timestamp = time.time()
+                if abs(timestamp - current_timestamp) <= difference:
+                    if edge['node']['lastMessage']['text'] == '{{DEAL_HAS_PROBLEM}}' and edge['node']['type'] != 'SUPPORT':
+                        tuple_nodes[id] = {'id': id, 'status': 'PROBLEM', 'timestamp': timestamp}
+                    elif status in ('CONFIRMED', 'SENT', 'ROLLED_BACK'):
+                        tuple_nodes[id] = {'id': id, 'status': status, 'timestamp': timestamp}
+            except Exception as e:
+                if self.Logging == True:
+                    print(e)
+        return tuple_nodes if tuple_nodes else None
+
     def get_new_messages(self, interval=5, max_interval=30):
             username = self.username
             current_interval = interval
@@ -105,32 +222,6 @@ class PlayerokRequestsApi:
 
                 time.sleep(current_interval)
                 return new_messages  
-
-    def fetch_chats(self, after_cursor=None):
-        variables = {
-            "pagination": {"first": 10},  
-            "filter": {"userId": self.id}
-        }
-        if after_cursor:
-            variables["pagination"]["after"] = after_cursor
-        extensions = {
-            "persistedQuery": {
-                "version": 1,
-                "sha256Hash": "4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"
-            }
-        }
-        params = {
-            "operationName": "chats",
-            "variables": json.dumps(variables),
-            "extensions": json.dumps(extensions)
-        }
-        try:
-            response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            print(f"Ошибка при выполнении запроса: {e}")
-            return None
 
     def get_messages_info(self, unread=False):
         username = self.username
@@ -215,6 +306,34 @@ class PlayerokRequestsApi:
 
         return all_chats
 
+    def fetch_chats(self, after_cursor=None):
+        variables = {
+            "pagination": {"first": 10},  
+            "filter": {"userId": self.id}
+        }
+        if after_cursor:
+            variables["pagination"]["after"] = after_cursor
+        extensions = {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"
+            }
+        }
+        params = {
+            "operationName": "chats",
+            "variables": json.dumps(variables),
+            "extensions": json.dumps(extensions)
+        }
+        try:
+            response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Ошибка при выполнении запроса: {e}")
+            return None
+
+
+    # viewer functions
     
     def get_username(self):
         try:
@@ -251,6 +370,106 @@ class PlayerokRequestsApi:
             return ''
 
 
+    # item functions
+
+    def copy_product(self, link):
+
+        if self.Logging == True:
+            print("Начинаем копировать продукт")
+        url = "https://playerok.com/graphql"
+        slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
+
+        params = {
+            "operationName": "item",
+            "variables": f'{{"slug":"{slug}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
+        }
+
+        try:
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
+            if response.status_code == 200:
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                product_data = {
+                    "title": data["data"]["item"]["name"],
+                    "description": data["data"]["item"]["description"],
+                    "rawprice": data["data"]["item"]["rawPrice"],
+                    "price": data["data"]["item"]["price"],
+                    "attachments": data["data"]["item"]["attachments"]
+                }
+
+                return product_data
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+
+    def increase_item_priority(self, item_id):
+        url = "https://playerok.com/graphql"
+        json_data = {
+        "operationName": "increaseItemPriorityStatus",
+        "variables": {
+            "input": {
+            "priorityStatuses": [
+                "1f00f21b-7768-62a0-296f-75a31ee8ce72"
+            ],
+            "transactionProviderId": "LOCAL",
+            "transactionProviderData": {
+                "paymentMethodId": None
+            },
+            "itemId": f"{item_id}"
+            }
+        },
+        "query": "mutation increaseItemPriorityStatus($input: PublishItemInput!) {\n  increaseItemPriorityStatus(input: $input) {\n    ...RegularItem\n    __typename\n  }\n}\n\nfragment RegularItem on Item {\n  ...RegularMyItem\n  ...RegularForeignItem\n  __typename\n}\n\nfragment RegularMyItem on MyItem {\n  ...ItemFields\n  prevPrice\n  priority\n  sequence\n  priorityPrice\n  statusExpirationDate\n  comment\n  viewsCounter\n  statusDescription\n  editable\n  statusPayment {\n    ...StatusPaymentTransaction\n    __typename\n  }\n  moderator {\n    id\n    username\n    __typename\n  }\n  approvalDate\n  deletedAt\n  createdAt\n  updatedAt\n  mayBePublished\n  prevFeeMultiplier\n  sellerNotifiedAboutFeeChange\n  __typename\n}\n\nfragment ItemFields on Item {\n  id\n  slug\n  name\n  description\n  rawPrice\n  price\n  attributes\n  status\n  priorityPosition\n  sellerType\n  feeMultiplier\n  user {\n    ...ItemUser\n    __typename\n  }\n  buyer {\n    ...ItemUser\n    __typename\n  }\n  attachments {\n    ...PartialFile\n    __typename\n  }\n  category {\n    ...RegularGameCategory\n    __typename\n  }\n  game {\n    ...RegularGameProfile\n    __typename\n  }\n  comment\n  dataFields {\n    ...GameCategoryDataFieldWithValue\n    __typename\n  }\n  obtainingType {\n    ...GameCategoryObtainingType\n    __typename\n  }\n  __typename\n}\n\nfragment ItemUser on UserFragment {\n  ...UserEdgeNode\n  __typename\n}\n\nfragment UserEdgeNode on UserFragment {\n  ...RegularUserFragment\n  __typename\n}\n\nfragment RegularUserFragment on UserFragment {\n  id\n  username\n  role\n  avatarURL\n  isOnline\n  isBlocked\n  rating\n  testimonialCounter\n  createdAt\n  supportChatId\n  systemChatId\n  __typename\n}\n\nfragment PartialFile on File {\n  id\n  url\n  __typename\n}\n\nfragment RegularGameCategory on GameCategory {\n  id\n  slug\n  name\n  categoryId\n  gameId\n  obtaining\n  options {\n    ...RegularGameCategoryOption\n    __typename\n  }\n  props {\n    ...GameCategoryProps\n    __typename\n  }\n  noCommentFromBuyer\n  instructionForBuyer\n  instructionForSeller\n  useCustomObtaining\n  autoConfirmPeriod\n  autoModerationMode\n  agreements {\n    ...RegularGameCategoryAgreement\n    __typename\n  }\n  feeMultiplier\n  __typename\n}\n\nfragment RegularGameCategoryOption on GameCategoryOption {\n  id\n  group\n  label\n  type\n  field\n  value\n  sequence\n  valueRangeLimit {\n    min\n    max\n    __typename\n  }\n  __typename\n}\n\nfragment GameCategoryProps on GameCategoryPropsObjectType {\n  minTestimonials\n  minTestimonialsForSeller\n  __typename\n}\n\nfragment RegularGameCategoryAgreement on GameCategoryAgreement {\n  description\n  gameCategoryId\n  gameCategoryObtainingTypeId\n  iconType\n  id\n  sequence\n  __typename\n}\n\nfragment RegularGameProfile on GameProfile {\n  id\n  name\n  type\n  slug\n  logo {\n    ...PartialFile\n    __typename\n  }\n  __typename\n}\n\nfragment GameCategoryDataFieldWithValue on GameCategoryDataFieldWithValue {\n  id\n  label\n  type\n  inputType\n  copyable\n  hidden\n  required\n  value\n  __typename\n}\n\nfragment GameCategoryObtainingType on GameCategoryObtainingType {\n  id\n  name\n  description\n  gameCategoryId\n  noCommentFromBuyer\n  instructionForBuyer\n  instructionForSeller\n  sequence\n  feeMultiplier\n  agreements {\n    ...RegularGameCategoryAgreement\n    __typename\n  }\n  props {\n    minTestimonialsForSeller\n    __typename\n  }\n  __typename\n}\n\nfragment StatusPaymentTransaction on Transaction {\n  id\n  operation\n  direction\n  providerId\n  status\n  statusDescription\n  statusExpirationDate\n  value\n  props {\n    paymentURL\n    __typename\n  }\n  __typename\n}\n\nfragment RegularForeignItem on ForeignItem {\n  ...ItemFields\n  __typename\n}"
+        }
+        try:
+            response = tls_requests.post(url, headers=globalheaders, cookies=self.cookies, json=json_data)
+            if response.status_code == 200:
+                data = response.json()
+                print(data)
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+        return None
+
+    def get_product_data(self, link):
+        url = "https://playerok.com/graphql"
+        slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
+
+        params = {
+            "operationName": "item",
+            "variables": f'{{"slug":"{slug}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
+        }
+
+        try:
+            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
+            if response.status_code == 200:
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                product_data = data
+
+                return product_data
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
+    
+
     def get_item_positioninfind(self, item_slug):
         params = {
             'operationName': 'item',
@@ -262,8 +481,14 @@ class PlayerokRequestsApi:
         sequence = data['data']['item']['sequence']
         return sequence
 
-    def get_lots(self, slug_only=False):
-
+    def get_lots(self, slug_only=False, name_filter=None):
+        """
+        Получает список лотов пользователя с возможностью фильтрации по имени
+        
+        :param slug_only: Если True, возвращает только slug лотов
+        :param name_filter: Строка для фильтрации лотов по имени (None - без фильтрации)
+        :return: Список лотов или slug в зависимости от slug_only
+        """
         try:
             user_id = self.id
             if not user_id:
@@ -295,7 +520,10 @@ class PlayerokRequestsApi:
                     'name': node.get('name', ''),
                     'slug': node.get('slug', '') 
                 }
-                lots.append(lot)
+                
+                # Применяем фильтр по имени, если он задан
+                if name_filter is None or name_filter.lower() in lot['name'].lower():
+                    lots.append(lot)
 
             if slug_only:
                 return [lot['slug'] for lot in lots]  
@@ -305,7 +533,43 @@ class PlayerokRequestsApi:
             print(f"Ошибка при получении лотов: {e}")
             return [] if not slug_only else []
 
+    # user functions
 
+    def get_id_for_username(self, username):
+        url = "https://playerok.com/graphql"
+        params = {
+            "operationName": "user",
+            "variables": f'{{"username":"{username}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                print("Запрос успешен!")
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                user_data = data["data"]["user"]
+                user_id = user_data['id']
+                return user_id
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
 
     def get_balance(self):
         if self.Logging == True:
@@ -413,6 +677,8 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при запросе: {e}")
             return None
+        
+    # other functions
 
     def calculate_cost(self, commision, cost, func):
         if commision and cost and func:
@@ -433,181 +699,46 @@ class PlayerokRequestsApi:
 
             return cost_billing
         else:
-            return None
+            return None    
 
-        
-    def get_product_data(self, link):
-        url = "https://playerok.com/graphql"
-        slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
-
-        params = {
-            "operationName": "item",
-            "variables": f'{{"slug":"{slug}"}}',
-            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
-        }
-
-        try:
-            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
-            if response.status_code == 200:
-                data = json.loads(response.text)
-                errors = data.get("errors", [])
-                if errors:
-                    errormsg = errors[0].get("message", "Неизвестная ошибка")
-                    print(f"Ошибка GraphQL: {errormsg}")
-                    return None
-                product_data = data
-
-                return product_data
-            else:
-                print(f"Ошибка {response.status_code}: {response.text}")
-                return None
-        except Exception as e:
-            print(f"Ошибка при запросе: {e}")
-            return None
+    def get_unread_messages(self):
+        chats = self.fetch_chats()
+        unread_messages = 0
+        for chat in chats['data']['chats']['edges']:
+            unread_messages += int(chat['node']['unreadMessagesCounter'])
+        return unread_messages
     
-    def get_status_messages(self, difference=300):
-        if self.Logging == True:
-            print("start get_status_messages")
+    # deals function
 
-        chats = self.fetch_chats(after_cursor=None)
-        
-        edges = chats['data']['chats']['edges']
-        tuple_nodes = {}
-        for edge in edges:
-            try:
-                message_created = edge['node']['lastMessage']['createdAt']
-                dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
-                id = edge['node']['id']
-                status = edge['node']['lastMessage']['deal']['status']
-                timestamp = dt.timestamp()
-                current_timestamp = time.time()
-                if abs(timestamp - current_timestamp) <= difference:
-                    if edge['node']['lastMessage']['text'] == '{{DEAL_HAS_PROBLEM}}' and edge['node']['type'] != 'SUPPORT':
-                        tuple_nodes[id] = {'id': id, 'status': 'PROBLEM', 'timestamp': timestamp}
-                    elif edge['node']['lastMessage']['deal']['status'] in ('CONFIRMED', 'PAID'):
-                        tuple_nodes[id] = {'id': id, 'status': status, 'timestamp': timestamp}
-            except Exception as e:
-                if self.Logging == True:
-                    print(e)
-        return tuple_nodes if tuple_nodes else None
-                
-
-        
-        
-
-    def copy_product(self, link):
-
-        if self.Logging == True:
-            print("Начинаем копировать продукт")
-        url = "https://playerok.com/graphql"
-        slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
-
+    def get_actual_deals(self):
         params = {
-            "operationName": "item",
-            "variables": f'{{"slug":"{slug}"}}',
-            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"937add98f8a20b9ff4991bc6ba2413283664e25e7865c74528ac21c7dff86e24"}}'
-        }
-
-        try:
-            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
-            if response.status_code == 200:
-                data = json.loads(response.text)
-                errors = data.get("errors", [])
-                if errors:
-                    errormsg = errors[0].get("message", "Неизвестная ошибка")
-                    print(f"Ошибка GraphQL: {errormsg}")
-                    return None
-                product_data = {
-                    "title": data["data"]["item"]["name"],
-                    "description": data["data"]["item"]["description"],
-                    "rawprice": data["data"]["item"]["rawPrice"],
-                    "price": data["data"]["item"]["price"],
-                    "attachments": data["data"]["item"]["attachments"]
+            "operationName": "countDeals",
+            "variables": json.dumps({
+                "filter": {
+                    "userId": self.id,
+                    "direction": "OUT",
+                    "status": ["PAID"]
                 }
-
-                return product_data
-            else:
-                print(f"Ошибка {response.status_code}: {response.text}")
-                return None
-        except Exception as e:
-            print(f"Ошибка при запросе: {e}")
-            return None
-
-    def on_send_message(self, text):
-        print("Начинаем отправлять сообщение")
-        chat_id = self.on_username_id_get()
-        url = "https://playerok.com/graphql"
-        json_data = {
-            "operationName": "createChatMessage",
-            "variables": {
-                "input": {
-                    "chatId": chat_id,
-                    "text": text,
-                },
-            },
-            "query": "mutation createChatMessage($input: CreateChatMessageInput!, $file: Upload) { createChatMessage(input: $input, file: $file) { ...RegularChatMessage __typename } } fragment RegularChatMessage on ChatMessage { id text createdAt deletedAt isRead isSuspicious isBulkMessaging game { ...RegularGameProfile __typename } file { ...PartialFile __typename } user { ...ChatMessageUserFields __typename } deal { ...ChatMessageItemDeal __typename } item { ...ItemEdgeNode __typename } transaction { ...RegularTransaction __typename } moderator { ...UserEdgeNode __typename } eventByUser { ...ChatMessageUserFields __typename } eventToUser { ...ChatMessageUserFields __typename } isAutoResponse event buttons { ...ChatMessageButton __typename } __typename } fragment RegularGameProfile on GameProfile { id name type slug logo { ...PartialFile __typename } __typename } fragment PartialFile on File { id url __typename } fragment ChatMessageUserFields on UserFragment { ...UserEdgeNode __typename } fragment UserEdgeNode on UserFragment { ...RegularUserFragment __typename } fragment RegularUserFragment on UserFragment { id username role avatarURL isOnline isBlocked rating testimonialCounter createdAt supportChatId systemChatId __typename } fragment ChatMessageItemDeal on ItemDeal { id direction status statusDescription hasProblem user { ...ChatParticipant __typename } testimonial { ...ChatMessageDealTestimonial __typename } item { id name price slug rawPrice sellerType user { ...ChatParticipant __typename } category { id __typename } attachments { ...PartialFile __typename } comment dataFields { ...GameCategoryDataFieldWithValue __typename } obtainingType { ...GameCategoryObtainingType __typename } __typename } obtainingFields { ...GameCategoryDataFieldWithValue __typename } chat { id type __typename } transaction { id statusExpirationDate __typename } statusExpirationDate commentFromBuyer __typename } fragment ChatParticipant on UserFragment { ...RegularUserFragment __typename } fragment ChatMessageDealTestimonial on Testimonial { id status text rating createdAt updatedAt creator { ...RegularUserFragment __typename } moderator { ...RegularUserFragment __typename } user { ...RegularUserFragment __typename } __typename } fragment GameCategoryDataFieldWithValue on GameCategoryDataFieldWithValue { id label type inputType copyable hidden required value __typename } fragment GameCategoryObtainingType on GameCategoryObtainingType { id name description gameCategoryId noCommentFromBuyer instructionForBuyer instructionForSeller sequence feeMultiplier agreements { ...RegularGameCategoryAgreement __typename } props { minTestimonialsForSeller __typename } __typename } fragment RegularGameCategoryAgreement on GameCategoryAgreement { description gameCategoryId gameCategoryObtainingTypeId iconType id sequence __typename } fragment ItemEdgeNode on ItemProfile { ...MyItemEdgeNode ...ForeignItemEdgeNode __typename } fragment MyItemEdgeNode on MyItemProfile { id slug priority status name price rawPrice statusExpirationDate sellerType attachment { ...PartialFile __typename } user { ...UserItemEdgeNode __typename } approvalDate createdAt priorityPosition viewsCounter feeMultiplier __typename } fragment UserItemEdgeNode on UserFragment { ...UserEdgeNode __typename } fragment ForeignItemEdgeNode on ForeignItemProfile { id slug priority status name price rawPrice sellerType attachment { ...PartialFile __typename } user { ...UserItemEdgeNode __typename } approvalDate priorityPosition createdAt viewsCounter feeMultiplier __typename } fragment RegularTransaction on Transaction { id operation direction providerId provider { ...RegularTransactionProvider __typename } user { ...RegularUserFragment __typename } creator { ...RegularUserFragment __typename } status statusDescription statusExpirationDate value fee createdAt props { ...RegularTransactionProps __typename } verifiedAt verifiedBy { ...UserEdgeNode __typename } completedBy { ...UserEdgeNode __typename } paymentMethodId completedAt isSuspicious __typename } fragment RegularTransactionProvider on TransactionProvider { id name fee account { ...RegularTransactionProviderAccount __typename } props { ...TransactionProviderPropsFragment __typename } limits { ...ProviderLimits __typename } paymentMethods { ...TransactionPaymentMethod __typename } __typename } fragment RegularTransactionProviderAccount on TransactionProviderAccount { id value userId __typename } fragment TransactionProviderPropsFragment on TransactionProviderPropsFragment { requiredUserData { ...TransactionProviderRequiredUserData __typename } tooltip __typename } fragment TransactionProviderRequiredUserData on TransactionProviderRequiredUserData { email phoneNumber __typename } fragment ProviderLimits on ProviderLimits { incoming { ...ProviderLimitRange __typename } outgoing { ...ProviderLimitRange __typename } __typename } fragment ProviderLimitRange on ProviderLimitRange { min max __typename } fragment TransactionPaymentMethod on TransactionPaymentMethod { id name fee providerId account { ...RegularTransactionProviderAccount __typename } props { ...TransactionProviderPropsFragment __typename } limits { ...ProviderLimits __typename } __typename } fragment RegularTransactionProps on TransactionPropsFragment { creatorId dealId paidFromPendingIncome paymentURL successURL paymentAccount { id value __typename } paymentGateway alreadySpent exchangeRate __typename } fragment ChatMessageButton on ChatMessageButton { type url text __typename }"
-        }
-        try:
-            response = tls_requests.post(url, headers=globalheaders, cookies=self.cookies, json=json_data)
-            if response.status_code == 200:
-                data = response.json()
-                errors = data.get("errors")
-                if errors:
-                    print("Ошибка при отправке сообщения:", errors)
-                    return None
-                create_chat_msg = data.get("data", {}).get("createChatMessage")
-                if create_chat_msg:
-                    return data
-                else:
-                    print("Сообщение не было отправлено (ответ не соответствует ожиданиям).")
-                    return None
-            else:
-                print(f"Ошибка {response.status_code}: {response.text}")
-                return None
-        except Exception as e:
-            print(f"Ошибка при отправке сообщения: {e}")
-        return None
-
-    
-
-    def on_username_id_get(self):
-        username = self.username
-        user_id = self.id
-        url = "https://playerok.com/graphql"
-        params = {
-            "operationName": "chats",
-            "variables": f'{{"pagination":{{"first":10}},"filter":{{"userId":"{user_id}"}}}}',
-            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"4ff10c34989d48692b279c5eccf460c7faa0904420f13e380597b29f662a8aa4"}}'
+            }),
+            "extensions": json.dumps({
+                "persistedQuery": {
+                    "version": 1,
+                    "sha256Hash": "1e2605594b38041bb7a5466a9cab994a169725d7b69aae3b7ee185d0b7fc33c2"
+                }
+            })
         }
 
+
+
         try:
-            response = tls_requests.get(url, params=params, headers=globalheaders, cookies=self.cookies)
-            if response.status_code == 200:
-                try:
-                    data = response.json()
-                    errors = data.get("errors", [])
-                    if errors:
-                        errormsg = errors[0].get("message", "Неизвестная ошибка")
-                        print(f"Ошибка GraphQL: {errormsg}")
-                        return None
-                    chats_data = data.get("data", {}).get("chats", {})
-                    edges = chats_data.get("edges", [])
-                    for edge in edges:
-                        node = edge.get("node", {})
-                        participants = node.get("participants", [])
-                        for participant in participants:
-                            try:
-                                if participant.get("username") == username:
-                                    return node.get("id")
-                            except Exception as e:
-                                print(f'Ошибка {e}')    
-                    print(f"Пользователь {username} не найден в списке участников.")
-                    return None
-                except Exception as e:
-                    print(f'Ошибка при запросе!{e}')
-            else:
-                print(f"Ошибка {response.status_code}: {response.text}")
-                return None
-        except Exception as e:
-            print(f"Ошибка при запросе: {e}")
-            return None
+            response = tls_requests.get(
+                self.api_url,
+                params=params,
+                headers=globalheaders,
+                cookies=self.cookies
+            )
+            response.raise_for_status() 
+            data = response.json()
+            return data 
+        except:
+            pass
