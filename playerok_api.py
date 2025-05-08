@@ -1,7 +1,6 @@
 import json, time, tls_requests
 from datetime import datetime, date
 from urllib.parse import urlparse, parse_qs
-from api.dictionary_playerok_information import dictionary
 
 globalheaders = {
     'accept': '*/*',
@@ -58,6 +57,7 @@ class PlayerokRequestsApi:
     # chats functions
 
     def on_username_id_get(self, profileusername, username):
+        """блять честно хуй знает что тут захуйня но она нужна... вроде как для отправки сообщений надо поменять..."""
         user_id = self.get_id_for_username(profileusername)
         url = "https://playerok.com/graphql"
         params = {
@@ -93,6 +93,7 @@ class PlayerokRequestsApi:
             return None
 
     def on_send_message(self, username, text):
+        """отправить сообщение по Username"""
         chat_id = self.on_username_id_get(self.username, username)
         url = "https://playerok.com/graphql"
         json_data = {
@@ -127,6 +128,7 @@ class PlayerokRequestsApi:
         return None
 
     def get_status_messages(self, difference=300):
+        """получить сообщения со статусом надо переписать чтобы смотрело все сообщения а не первую страницу в вкладке сообщения"""
         if self.Logging == True:
             print("start get_status_messages")
 
@@ -135,7 +137,7 @@ class PlayerokRequestsApi:
 
 
         edges = chats['data']['chats']['edges']
-        tuple_nodes = {}
+        tuple_nodes = []
         for edge in edges:
             try:
                 message_created = edge['node']['lastMessage']['createdAt']
@@ -162,16 +164,15 @@ class PlayerokRequestsApi:
                 timestamp = dt.timestamp()
                 current_timestamp = time.time()
                 if abs(timestamp - current_timestamp) <= difference:
-                    if edge['node']['lastMessage']['text'] == '{{DEAL_HAS_PROBLEM}}' and edge['node']['type'] != 'SUPPORT':
-                        tuple_nodes[id] = {'id': id, 'status': 'PROBLEM', 'timestamp': timestamp}
-                    elif status in ('CONFIRMED', 'SENT', 'ROLLED_BACK'):
-                        tuple_nodes[id] = {'id': id, 'status': status, 'timestamp': timestamp}
+                    if status in ('CONFIRMED', 'SENT', 'ROLLED_BACK', 'PAID'):
+                        tuple_nodes.append({'id': data2['data']['deal']['id'], 'status': status, 'timestamp': timestamp})
             except Exception as e:
                 if self.Logging == True:
                     print(e)
         return tuple_nodes if tuple_nodes else None
 
     def get_new_messages(self, interval=5, max_interval=30):
+            """получить новые сообщения тоже не понимаю для чего она нужна"""
             username = self.username
             current_interval = interval
             while True:
@@ -224,6 +225,7 @@ class PlayerokRequestsApi:
                 return new_messages  
 
     def get_messages_info(self, unread=False):
+        """получить информацию по всем чатам я думаю не нужная функция либо ее переписать годно надо"""
         username = self.username
         user_id = self.id
         if self.Logging == True:
@@ -307,6 +309,7 @@ class PlayerokRequestsApi:
         return all_chats
 
     def fetch_chats(self, after_cursor=None):
+        """захват чатов используется"""
         variables = {
             "pagination": {"first": 10},  
             "filter": {"userId": self.id}
@@ -331,11 +334,99 @@ class PlayerokRequestsApi:
         except Exception as e:
             print(f"Ошибка при выполнении запроса: {e}")
             return None
+        
+    def fetch_lots(self, after_cursor=None):
+        """захват завершенных лотов используется в функции self.get_all_lots"""
+    
+        variables = {
+            "pagination": {"first": 16},  
+              "filter": {
+                    "userId": self.id,
+                    "status": ["DECLINED", "BLOCKED", "EXPIRED", "SOLD", "DRAFT"]
+                }
+        }
+        if after_cursor:
+            variables["pagination"]["after"] = after_cursor
+        extensions = {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "d79d6e2921fea03c5f1515a8925fbb816eacaa7bcafe03eb47a40425ef49601e"
+            }
+        }
+        params = {
+            "operationName": "items",
+            "variables": json.dumps(variables),
+            "extensions": json.dumps(extensions)
+        }
+        try:
+            response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Ошибка при выполнении запроса: {e}")
+            return None
 
+        
+    def fetch_exhibited_lots(self, userid=None, after_cursor=None):
+        """захват выставленных лотов"""
+        variables = {"pagination":{"first":16},"filter":{"userId":f"{self.id if not userid else userid}","status":["APPROVED"]}}
+        if after_cursor:
+            variables["pagination"]["after"] = after_cursor
+        extensions = {
+            "persistedQuery": {
+                "version": 1,
+                "sha256Hash": "d79d6e2921fea03c5f1515a8925fbb816eacaa7bcafe03eb47a40425ef49601e"
+            }
+        }
+        params = {
+            "operationName": "items",
+            "variables": json.dumps(variables),
+            "extensions": json.dumps(extensions)
+        }
+        try:
+            response = tls_requests.get(self.api_url, headers=globalheaders, params=params, cookies=self.cookies)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            print(f"Ошибка при выполнении запроса: {e}")
+            return None
+        
+
+    def all_exhibited_lots(self, userid=None):
+        """все выставленные лоты (можно смотреть у других по userid) не указывая id вы будете смотреть свои лоты"""
+        lots = []
+        try:
+            response = self.fetch_exhibited_lots(userid)
+            if not response or 'data' not in response:
+                return lots
+                
+            for edge in response['data']['items']['edges']:
+                lots.append(edge)
+                
+            while True:
+                if not response['data']['items']['pageInfo']['hasNextPage'] or not response['data']['items']['pageInfo']['endCursor']:
+                    break
+                    
+                response = self.fetch_exhibited_lots(userid, after_cursor=response['data']['items']['pageInfo']['endCursor'])
+                if not response or 'data' not in response:
+                    break
+                    
+                for edge in response['data']['items']['edges']:
+                    lots.append(edge)
+                    
+            return lots  # Return the collected lots instead of the last response
+        except Exception as e:
+            print(f"Ошибка при получении лотов: {e}")
+            return lots
+
+            
+
+            
 
     # viewer functions
     
     def get_username(self):
+        """получить username и id пользователя (используется для получения в начале self.id, self.username)"""
         try:
             json_data = {
     'operationName': 'viewer',
@@ -370,9 +461,45 @@ class PlayerokRequestsApi:
             return ''
 
 
-    # item functions
+    def get_all_lots(self, search_filter: str = None) -> list[dict]:
+        """получить информацию по всем завершённым лотам"""
+        after_cursor = None
+        all_lots = []
+
+        while True:
+            response = self.fetch_lots(after_cursor=after_cursor)
+            
+            if not response or "data" not in response or "items" not in response["data"]:
+                break
+
+            items = response["data"]["items"]
+            edges = items.get("edges", [])
+            page_info = items.get("pageInfo", {})
+
+            for edge in edges:
+                if not edge.get("node"):
+                    continue
+                    
+                if search_filter:
+                    node = edge["node"]
+                    if any(search_filter.lower() in str(value).lower() 
+                        for value in node.values() 
+                        if isinstance(value, (str, int, float))):
+                        all_lots.append(node)
+                else:
+                    all_lots.append(edge["node"])
+
+            if not page_info.get("hasNextPage") or not page_info.get("endCursor"):
+                break
+
+            after_cursor = page_info["endCursor"]
+
+        return all_lots
+
 
     def copy_product(self, link):
+
+        """получить информацию для выставления товара через ссылку"""
 
         if self.Logging == True:
             print("Начинаем копировать продукт")
@@ -411,6 +538,7 @@ class PlayerokRequestsApi:
             return None
 
     def increase_item_priority(self, item_id):
+        """поднять товар по айди"""
         url = "https://playerok.com/graphql"
         json_data = {
         "operationName": "increaseItemPriorityStatus",
@@ -440,7 +568,39 @@ class PlayerokRequestsApi:
             print(f"Ошибка при отправке сообщения: {e}")
         return None
 
+    def refill_item(self, item_id):
+        """возобновить товар по id (он завершен)"""
+        url = "https://playerok.com/graphql"
+        json_data = {
+        "operationName": "publishItem",
+        "variables": {
+            "input": {
+            "priorityStatuses": [
+                "1f00f21b-7768-62a0-296f-75a31ee8ce72"
+            ],
+            "transactionProviderId": "LOCAL",
+            "transactionProviderData": {
+                "paymentMethodId": None
+            },
+            "itemId": f"{item_id}"
+            }
+        },
+        "query": "mutation publishItem($input: PublishItemInput!) {\n  publishItem(input: $input) {\n    ...RegularItem\n    __typename\n  }\n}\n\nfragment RegularItem on Item {\n  ...RegularMyItem\n  ...RegularForeignItem\n  __typename\n}\n\nfragment RegularMyItem on MyItem {\n  ...ItemFields\n  prevPrice\n  priority\n  sequence\n  priorityPrice\n  statusExpirationDate\n  comment\n  viewsCounter\n  statusDescription\n  editable\n  statusPayment {\n    ...StatusPaymentTransaction\n    __typename\n  }\n  moderator {\n    id\n    username\n    __typename\n  }\n  approvalDate\n  deletedAt\n  createdAt\n  updatedAt\n  mayBePublished\n  prevFeeMultiplier\n  sellerNotifiedAboutFeeChange\n  __typename\n}\n\nfragment ItemFields on Item {\n  id\n  slug\n  name\n  description\n  rawPrice\n  price\n  attributes\n  status\n  priorityPosition\n  sellerType\n  feeMultiplier\n  user {\n    ...ItemUser\n    __typename\n  }\n  buyer {\n    ...ItemUser\n    __typename\n  }\n  attachments {\n    ...PartialFile\n    __typename\n  }\n  category {\n    ...RegularGameCategory\n    __typename\n  }\n  game {\n    ...RegularGameProfile\n    __typename\n  }\n  comment\n  dataFields {\n    ...GameCategoryDataFieldWithValue\n    __typename\n  }\n  obtainingType {\n    ...GameCategoryObtainingType\n    __typename\n  }\n  __typename\n}\n\nfragment ItemUser on UserFragment {\n  ...UserEdgeNode\n  __typename\n}\n\nfragment UserEdgeNode on UserFragment {\n  ...RegularUserFragment\n  __typename\n}\n\nfragment RegularUserFragment on UserFragment {\n  id\n  username\n  role\n  avatarURL\n  isOnline\n  isBlocked\n  rating\n  testimonialCounter\n  createdAt\n  supportChatId\n  systemChatId\n  __typename\n}\n\nfragment PartialFile on File {\n  id\n  url\n  __typename\n}\n\nfragment RegularGameCategory on GameCategory {\n  id\n  slug\n  name\n  categoryId\n  gameId\n  obtaining\n  options {\n    ...RegularGameCategoryOption\n    __typename\n  }\n  props {\n    ...GameCategoryProps\n    __typename\n  }\n  noCommentFromBuyer\n  instructionForBuyer\n  instructionForSeller\n  useCustomObtaining\n  autoConfirmPeriod\n  autoModerationMode\n  agreements {\n    ...RegularGameCategoryAgreement\n    __typename\n  }\n  feeMultiplier\n  __typename\n}\n\nfragment RegularGameCategoryOption on GameCategoryOption {\n  id\n  group\n  label\n  type\n  field\n  value\n  valueRangeLimit {\n    min\n    max\n    __typename\n  }\n  __typename\n}\n\nfragment GameCategoryProps on GameCategoryPropsObjectType {\n  minTestimonials\n  minTestimonialsForSeller\n  __typename\n}\n\nfragment RegularGameCategoryAgreement on GameCategoryAgreement {\n  description\n  gameCategoryId\n  gameCategoryObtainingTypeId\n  iconType\n  id\n  sequence\n  __typename\n}\n\nfragment RegularGameProfile on GameProfile {\n  id\n  name\n  type\n  slug\n  logo {\n    ...PartialFile\n    __typename\n  }\n  __typename\n}\n\nfragment GameCategoryDataFieldWithValue on GameCategoryDataFieldWithValue {\n  id\n  label\n  type\n  inputType\n  copyable\n  hidden\n  required\n  value\n  __typename\n}\n\nfragment GameCategoryObtainingType on GameCategoryObtainingType {\n  id\n  name\n  description\n  gameCategoryId\n  noCommentFromBuyer\n  instructionForBuyer\n  instructionForSeller\n  sequence\n  feeMultiplier\n  agreements {\n    ...MinimalGameCategoryAgreement\n    __typename\n  }\n  props {\n    minTestimonialsForSeller\n    __typename\n  }\n  __typename\n}\n\nfragment MinimalGameCategoryAgreement on GameCategoryAgreement {\n  description\n  iconType\n  id\n  sequence\n  __typename\n}\n\nfragment StatusPaymentTransaction on Transaction {\n  id\n  operation\n  direction\n  providerId\n  status\n  statusDescription\n  statusExpirationDate\n  value\n  props {\n    paymentURL\n    __typename\n  }\n  __typename\n}\n\nfragment RegularForeignItem on ForeignItem {\n  ...ItemFields\n  __typename\n}"
+        }
+        try:
+            response = tls_requests.post(url, headers=globalheaders, cookies=self.cookies, json=json_data)
+            if response.status_code == 200:
+                data = response.json()
+                print(data)
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при отправке сообщения: {e}")
+        return None
+
     def get_product_data(self, link):
+        """получить информацию о товаре через ссылку"""
         url = "https://playerok.com/graphql"
         slug = link.replace("https://playerok.com/products", "").split('?')[0].strip('/')
 
@@ -471,6 +631,7 @@ class PlayerokRequestsApi:
     
 
     def get_item_positioninfind(self, item_slug):
+        """получить позицию предмета на рынке по slug"""
         params = {
             'operationName': 'item',
             'variables': f'{{"slug":"{item_slug}"}}',
@@ -481,61 +642,12 @@ class PlayerokRequestsApi:
         sequence = data['data']['item']['sequence']
         return sequence
 
-    def get_lots(self, slug_only=False, name_filter=None):
-        """
-        Получает список лотов пользователя с возможностью фильтрации по имени
-        
-        :param slug_only: Если True, возвращает только slug лотов
-        :param name_filter: Строка для фильтрации лотов по имени (None - без фильтрации)
-        :return: Список лотов или slug в зависимости от slug_only
-        """
-        try:
-            user_id = self.id
-            if not user_id:
-                raise ValueError("Invalid user_id")
-
-            params = {
-                'operationName': 'items',
-                'variables': json.dumps({
-                    'pagination': {'first': 24},
-                    'filter': {
-                        'userId': user_id,
-                        'status': ['APPROVED', 'PENDING_MODERATION', 'PENDING_APPROVAL']
-                    }
-                }),
-                'extensions': '{"persistedQuery":{"version":1,"sha256Hash":"d79d6e2921fea03c5f1515a8925fbb816eacaa7bcafe03eb47a40425ef49601e"}}',
-            }
-
-            response = tls_requests.get('https://playerok.com/graphql', params=params, cookies=self.cookies, headers=globalheaders)
-            response.raise_for_status()
-
-            data = response.json()
-
-            lots = []
-            edges = data.get('data', {}).get('items', {}).get('edges', [])
-            for edge in edges:
-                node = edge.get('node', {})
-                lot = {
-                    'id': node.get('id', ''),
-                    'name': node.get('name', ''),
-                    'slug': node.get('slug', '') 
-                }
-                
-                # Применяем фильтр по имени, если он задан
-                if name_filter is None or name_filter.lower() in lot['name'].lower():
-                    lots.append(lot)
-
-            if slug_only:
-                return [lot['slug'] for lot in lots]  
-            return lots
-
-        except Exception as e:
-            print(f"Ошибка при получении лотов: {e}")
-            return [] if not slug_only else []
+ 
 
     # user functions
 
     def get_id_for_username(self, username):
+        """получить айди пользователя по никнейму"""
         url = "https://playerok.com/graphql"
         params = {
             "operationName": "user",
@@ -572,6 +684,7 @@ class PlayerokRequestsApi:
             return None
 
     def get_balance(self):
+        """получить баланс аккаунта из куки"""
         if self.Logging == True:
             print("Начало проверки")
         username = self.username
@@ -609,6 +722,7 @@ class PlayerokRequestsApi:
 
 
     def get_full_info(self):
+        """получить полную информацию о профиле из личных куки"""
         username = self.username
         url = "https://playerok.com/graphql"
         params = {
@@ -636,6 +750,7 @@ class PlayerokRequestsApi:
             return None
 
     def get_profile(self):
+        """получить информацию о профиле из личных cookie"""
         username = self.username
         url = "https://playerok.com/graphql"
         params = {
@@ -680,28 +795,8 @@ class PlayerokRequestsApi:
         
     # other functions
 
-    def calculate_cost(self, commision, cost, func):
-        if commision and cost and func:
-            if self.Logging == True:
-                print("Начало расчётов")
-            selected_category = dictionary[func][commision]
-            cost_billing = None
-
-
-            for commision_type in selected_category:
-                if cost <= commision_type:
-                    cost_billing = selected_category[commision_type]
-                    break
-
-            if cost_billing == None and cost >= 10000:
-                cost_billing = dictionary[func][commision][10000]
-
-
-            return cost_billing
-        else:
-            return None    
-
     def get_unread_messages(self):
+        """"возвращает int не прочитанных сообщений"""
         chats = self.fetch_chats()
         unread_messages = 0
         for chat in chats['data']['chats']['edges']:
@@ -710,7 +805,26 @@ class PlayerokRequestsApi:
     
     # deals function
 
+    def deal_confirm(self, id):
+        """подтвердить сделку по id"""
+        json_data = {
+        "operationName": "updateDeal",
+        "variables": {
+            "input": {
+            "id": f"{id}",
+            "status": "SENT"
+            }
+        },
+        "query": "mutation updateDeal($input: UpdateItemDealInput!) {\n  updateDeal(input: $input) {\n    ...RegularItemDeal\n    __typename\n  }\n}\n\nfragment RegularItemDeal on ItemDeal {\n  id\n  status\n  direction\n  statusExpirationDate\n  statusDescription\n  obtaining\n  hasProblem\n  reportProblemEnabled\n  completedBy {\n    ...MinimalUserFragment\n    __typename\n  }\n  props {\n    ...ItemDealProps\n    __typename\n  }\n  prevStatus\n  completedAt\n  createdAt\n  logs {\n    ...ItemLog\n    __typename\n  }\n  transaction {\n    ...ItemDealTransaction\n    __typename\n  }\n  user {\n    ...UserEdgeNode\n    __typename\n  }\n  chat {\n    ...RegularChatId\n    __typename\n  }\n  item {\n    ...PartialDealItem\n    __typename\n  }\n  testimonial {\n    ...RegularItemDealTestimonial\n    __typename\n  }\n  obtainingFields {\n    ...GameCategoryDataFieldWithValue\n    __typename\n  }\n  commentFromBuyer\n  __typename\n}\n\nfragment MinimalUserFragment on UserFragment {\n  id\n  username\n  role\n  __typename\n}\n\nfragment ItemDealProps on ItemDealProps {\n  autoConfirmPeriod\n  __typename\n}\n\nfragment ItemLog on ItemLog {\n  id\n  event\n  createdAt\n  user {\n    ...UserEdgeNode\n    __typename\n  }\n  __typename\n}\n\nfragment UserEdgeNode on UserFragment {\n  ...RegularUserFragment\n  __typename\n}\n\nfragment RegularUserFragment on UserFragment {\n  id\n  username\n  role\n  avatarURL\n  isOnline\n  isBlocked\n  rating\n  testimonialCounter\n  createdAt\n  supportChatId\n  systemChatId\n  __typename\n}\n\nfragment ItemDealTransaction on Transaction {\n  id\n  operation\n  direction\n  providerId\n  status\n  value\n  createdAt\n  paymentMethodId\n  statusExpirationDate\n  __typename\n}\n\nfragment RegularChatId on Chat {\n  id\n  __typename\n}\n\nfragment PartialDealItem on Item {\n  ...PartialDealMyItem\n  ...PartialDealForeignItem\n  __typename\n}\n\nfragment PartialDealMyItem on MyItem {\n  id\n  slug\n  priority\n  status\n  name\n  price\n  priorityPrice\n  rawPrice\n  statusExpirationDate\n  sellerType\n  approvalDate\n  createdAt\n  priorityPosition\n  viewsCounter\n  feeMultiplier\n  comment\n  attachments {\n    ...RegularFile\n    __typename\n  }\n  user {\n    ...UserEdgeNode\n    __typename\n  }\n  game {\n    ...RegularGameProfile\n    __typename\n  }\n  category {\n    ...MinimalGameCategory\n    __typename\n  }\n  dataFields {\n    ...GameCategoryDataFieldWithValue\n    __typename\n  }\n  obtainingType {\n    ...MinimalGameCategoryObtainingType\n    __typename\n  }\n  __typename\n}\n\nfragment RegularFile on File {\n  id\n  url\n  filename\n  mime\n  __typename\n}\n\nfragment RegularGameProfile on GameProfile {\n  id\n  name\n  type\n  slug\n  logo {\n    ...PartialFile\n    __typename\n  }\n  __typename\n}\n\nfragment PartialFile on File {\n  id\n  url\n  __typename\n}\n\nfragment MinimalGameCategory on GameCategory {\n  id\n  slug\n  name\n  __typename\n}\n\nfragment GameCategoryDataFieldWithValue on GameCategoryDataFieldWithValue {\n  id\n  label\n  type\n  inputType\n  copyable\n  hidden\n  required\n  value\n  __typename\n}\n\nfragment MinimalGameCategoryObtainingType on GameCategoryObtainingType {\n  id\n  name\n  description\n  gameCategoryId\n  noCommentFromBuyer\n  instructionForBuyer\n  instructionForSeller\n  sequence\n  feeMultiplier\n  props {\n    minTestimonialsForSeller\n    __typename\n  }\n  __typename\n}\n\nfragment PartialDealForeignItem on ForeignItem {\n  id\n  slug\n  priority\n  status\n  name\n  price\n  rawPrice\n  sellerType\n  approvalDate\n  priorityPosition\n  createdAt\n  viewsCounter\n  feeMultiplier\n  comment\n  attachments {\n    ...RegularFile\n    __typename\n  }\n  user {\n    ...UserEdgeNode\n    __typename\n  }\n  game {\n    ...RegularGameProfile\n    __typename\n  }\n  category {\n    ...MinimalGameCategory\n    __typename\n  }\n  dataFields {\n    ...GameCategoryDataFieldWithValue\n    __typename\n  }\n  obtainingType {\n    ...MinimalGameCategoryObtainingType\n    __typename\n  }\n  __typename\n}\n\nfragment RegularItemDealTestimonial on Testimonial {\n  id\n  status\n  text\n  rating\n  createdAt\n  updatedAt\n  creator {\n    ...RegularUserFragment\n    __typename\n  }\n  moderator {\n    ...RegularUserFragment\n    __typename\n  }\n  user {\n    ...RegularUserFragment\n    __typename\n  }\n  __typename\n}"
+        }
+        try:
+            response = tls_requests.post(self.api_url, headers=globalheaders, cookies=self.cookies, json=json_data)
+            return response.json()
+        except Exception as e:
+            pass
+
     def get_actual_deals(self):
+        """"получить список актуальных сделок который оплачены"""
         params = {
             "operationName": "countDeals",
             "variables": json.dumps({
