@@ -1,4 +1,7 @@
 import json
+import tls_requests
+
+
 
 globalheaders = {
     'accept': '*/*',

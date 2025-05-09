@@ -12,6 +12,32 @@ class PlayerokChatsApi:
         self.api_url = "https://playerok.com/graphql"
         self.last_messages = {}
         self.username, self.id = self.get_username()
+    
+    def get_username(self):
+        """получить username и id пользователя (используется для получения в начале self.id, self.username)"""
+        try:
+            json_data = {
+                'operationName': 'viewer',
+                'variables': {},
+                'query': 'query viewer {\n  viewer {\n    ...Viewer\n    __typename\n  }\n}\n\nfragment Viewer on User {\n  id\n  username\n  email\n  role\n  hasFrozenBalance\n  supportChatId\n  systemChatId\n  unreadChatsCounter\n  isBlocked\n  isBlockedFor\n  createdAt\n  lastItemCreatedAt\n  hasConfirmedPhoneNumber\n  canPublishItems\n  profile {\n    id\n    avatarURL\n    testimonialCounter\n    __typename\n  }\n  __typename\n}',
+            }
+            response = tls_requests.post(self.api_url, cookies=self.cookies, headers=globalheaders, json=json_data)
+            try:
+                data = response.json()
+                viewer = data.get('data', {}).get('viewer', {})
+                username = viewer.get('username', '')
+                id = viewer.get('id', '')
+                if not username:
+                    raise ValueError("Username not found")
+                return username, id
+            except Exception as e:
+                print(f'Unsolved problem(Please pass this error to the API owner.) - ERROR: {e}')
+        except ValueError as e:
+            print(f"Ошибка данных: {e}")
+            return '', ''
+        except Exception as e:
+            print(f"Неизвестная ошибка: {e}")
+            return '', ''
 
     def on_username_id_get(self, profileusername, username):
         """блять честно хуй знает что тут захуйня но она нужна... вроде как для отправки сообщений надо поменять..."""
@@ -83,44 +109,87 @@ class PlayerokChatsApi:
         return None
 
     def get_status_messages(self, difference=300):
-        """получить сообщения со статусом надо переписать чтобы смотрело все сообщения а не первую страницу в вкладке сообщения"""
+        """Fetch all messages with status, iterating through all pages of chats."""
         if self.Logging:
             print("start get_status_messages")
 
-        chats = self.fetch_chats(after_cursor=None)
-        edges = chats['data']['chats']['edges']
         tuple_nodes = []
-        for edge in edges:
-            try:
-                message_created = edge['node']['lastMessage']['createdAt']
-                dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
-                id = edge['node']['id']
-                params = {
-                    "operationName": "chat",
-                    "variables": f'{{"id":"{id}"}}',
-                    "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"38efcc58bdc432cc05bc743345e9ef9653a3ca1c0f45db822f4166d0f0cc17c4"}}'
-                }
+        after_cursor = None
 
-                response = tls_requests.get(self.api_url, params=params, headers=globalheaders, cookies=self.cookies)
-                data = json.loads(response.text)
-
-                params2 = {
-                    "operationName": "deal",
-                    "variables": f'{{"id":"{data['data']['chat']['deals'][0]['id']}"}}',
-                    "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"10fb6169572069b90c0fc4997ecd553d96449c573d574295afb70565a0d18198"}}'
-                }
-
-                response2 = tls_requests.get(self.api_url, params=params2, headers=globalheaders, cookies=self.cookies)
-                data2 = json.loads(response2.text)
-                status = data2['data']['deal']['status']
-                timestamp = dt.timestamp()
-                current_timestamp = time.time()
-                if abs(timestamp - current_timestamp) <= difference:
-                    if status in ('CONFIRMED', 'SENT', 'ROLLED_BACK', 'PAID'):
-                        tuple_nodes.append({'id': data2['data']['deal']['id'], 'status': status, 'timestamp': timestamp})
-            except Exception as e:
+        while True:
+            # Fetch chats with the current cursor (None for the first page)
+            chats = self.fetch_chats(after_cursor=after_cursor)
+            if not chats or 'data' not in chats or 'chats' not in chats['data']:
                 if self.Logging:
-                    print(e)
+                    print("No more chats or invalid response")
+                break
+
+            edges = chats['data']['chats']['edges']
+            if not edges:
+                if self.Logging:
+                    print("No edges found in chats")
+                break
+
+            for edge in edges:
+                try:
+                    # Extract last message creation time and chat ID
+                    message_created = edge['node']['lastMessage']['createdAt']
+                    dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
+                    chat_id = edge['node']['id']
+
+                    # Fetch chat details
+                    params = {
+                        "operationName": "chat",
+                        "variables": f'{{"id":"{chat_id}"}}',
+                        "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"38efcc58bdc432cc05bc743345e9ef9653a3ca1c0f45db822f4166d0f0cc17c4"}}'
+                    }
+                    response = tls_requests.get(self.api_url, params=params, headers=globalheaders, cookies=self.cookies)
+                    data = json.loads(response.text)
+
+                    # Check if chat has deals
+                    if not data.get('data', {}).get('chat', {}).get('deals'):
+                        continue
+
+                    deal_id = data['data']['chat']['deals'][0]['id']
+                    
+                    # Fetch deal details
+                    params2 = {
+                        "operationName": "deal",
+                        "variables": f'{{"id":"{deal_id}"}}',  # Fixed f-string syntax
+                        "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"10fb6169572069b90c0fc4997ecd553d96449c573d574295afb70565a0d18198"}}'
+                    }
+                    response2 = tls_requests.get(self.api_url, params=params2, headers=globalheaders, cookies=self.cookies)
+                    data2 = json.loads(response2.text)
+
+                    # Extract deal status
+                    status = data2.get('data', {}).get('deal', {}).get('status')
+                    if not status:
+                        continue
+
+                    timestamp = dt.timestamp()
+                    current_timestamp = time.time()
+
+                    # Check if the message is within the time difference and has a valid status
+                    if abs(timestamp - current_timestamp) <= difference:
+                        if status in ('CONFIRMED', 'SENT', 'ROLLED_BACK', 'PAID'):
+                            tuple_nodes.append({
+                                'id': data2['data']['deal']['id'],
+                                'status': status,
+                                'timestamp': timestamp
+                            })
+                except Exception as e:
+                    if self.Logging:
+                        print(f"Error processing chat: {e}")
+                    continue
+
+            # Check for the next page
+            page_info = chats['data']['chats'].get('pageInfo', {})
+            if not page_info.get('hasNextPage', False):
+                break
+            after_cursor = page_info.get('endCursor')
+            if not after_cursor:
+                break
+
         return tuple_nodes if tuple_nodes else None
 
     def get_new_messages(self, interval=5, max_interval=30):

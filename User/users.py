@@ -155,6 +155,8 @@ class PlayerokUsersApi:
                 user_id = user_data['id']
                 nickname = user_data["username"]
                 testimonial_count = user_data["profile"]["testimonialCounter"]
+                avatar_url = user_data["profile"].get("avatarURL", "")  # Безопасное извлечение avatarURL
+                created_at = user_data["profile"].get("createdAt", "")  # Извлечение createdAt
                 total_items = user_data["stats"]["items"]["total"]
                 finished_items = user_data["stats"]["items"]["finished"]
                 active_items = total_items - finished_items
@@ -163,6 +165,8 @@ class PlayerokUsersApi:
                 return (
                     nickname,
                     testimonial_count,
+                    avatar_url,
+                    created_at,  # Добавляем created_at в возвращаемый кортеж
                     total_items,
                     purchases_total,
                     sales_total,
