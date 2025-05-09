@@ -38,6 +38,42 @@ class PlayerokChatsApi:
         except Exception as e:
             print(f"Неизвестная ошибка: {e}")
             return '', ''
+    
+    def get_id_for_username(self, username):
+        """получить айди пользователя по никнейму"""
+        params = {
+            "operationName": "user",
+            "variables": f'{{"username":"{username}"}}',
+            "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"6dff0b984047e79aa4e416f0f0cb78c5175f071e08c051b07b6cf698ecd7f865"}}'
+        }
+        headers = {
+            "accept": "*/*",
+            "accept-language": "en-US,en;q=0.9",
+            "access-control-allow-headers": "sentry-trace, baggage",
+            "apollo-require-preflight": "true",
+            "apollographql-client-name": "web",
+            "referer": "https://playerok.com/profile/",
+            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        }
+        try:
+            response = tls_requests.get(self.api_url, params=params, headers=headers, cookies=self.cookies)
+            if response.status_code == 200:
+                print("Запрос успешен!")
+                data = json.loads(response.text)
+                errors = data.get("errors", [])
+                if errors:
+                    errormsg = errors[0].get("message", "Неизвестная ошибка")
+                    print(f"Ошибка GraphQL: {errormsg}")
+                    return None
+                user_data = data["data"]["user"]
+                user_id = user_data['id']
+                return user_id
+            else:
+                print(f"Ошибка {response.status_code}: {response.text}")
+                return None
+        except Exception as e:
+            print(f"Ошибка при запросе: {e}")
+            return None
 
     def on_username_id_get(self, profileusername, username):
         """блять честно хуй знает что тут захуйня но она нужна... вроде как для отправки сообщений надо поменять..."""
@@ -117,7 +153,6 @@ class PlayerokChatsApi:
         after_cursor = None
 
         while True:
-            # Fetch chats with the current cursor (None for the first page)
             chats = self.fetch_chats(after_cursor=after_cursor)
             if not chats or 'data' not in chats or 'chats' not in chats['data']:
                 if self.Logging:
@@ -132,12 +167,10 @@ class PlayerokChatsApi:
 
             for edge in edges:
                 try:
-                    # Extract last message creation time and chat ID
                     message_created = edge['node']['lastMessage']['createdAt']
                     dt = datetime.fromisoformat(message_created.replace('Z', '+00:00'))
                     chat_id = edge['node']['id']
 
-                    # Fetch chat details
                     params = {
                         "operationName": "chat",
                         "variables": f'{{"id":"{chat_id}"}}',
@@ -146,22 +179,19 @@ class PlayerokChatsApi:
                     response = tls_requests.get(self.api_url, params=params, headers=globalheaders, cookies=self.cookies)
                     data = json.loads(response.text)
 
-                    # Check if chat has deals
                     if not data.get('data', {}).get('chat', {}).get('deals'):
                         continue
 
                     deal_id = data['data']['chat']['deals'][0]['id']
                     
-                    # Fetch deal details
                     params2 = {
                         "operationName": "deal",
-                        "variables": f'{{"id":"{deal_id}"}}',  # Fixed f-string syntax
+                        "variables": f'{{"id":"{deal_id}"}}',  
                         "extensions": '{"persistedQuery":{"version":1,"sha256Hash":"10fb6169572069b90c0fc4997ecd553d96449c573d574295afb70565a0d18198"}}'
                     }
                     response2 = tls_requests.get(self.api_url, params=params2, headers=globalheaders, cookies=self.cookies)
                     data2 = json.loads(response2.text)
 
-                    # Extract deal status
                     status = data2.get('data', {}).get('deal', {}).get('status')
                     if not status:
                         continue
@@ -169,7 +199,6 @@ class PlayerokChatsApi:
                     timestamp = dt.timestamp()
                     current_timestamp = time.time()
 
-                    # Check if the message is within the time difference and has a valid status
                     if abs(timestamp - current_timestamp) <= difference:
                         if status in ('CONFIRMED', 'SENT', 'ROLLED_BACK', 'PAID'):
                             tuple_nodes.append({
@@ -182,7 +211,6 @@ class PlayerokChatsApi:
                         print(f"Error processing chat: {e}")
                     continue
 
-            # Check for the next page
             page_info = chats['data']['chats'].get('pageInfo', {})
             if not page_info.get('hasNextPage', False):
                 break
